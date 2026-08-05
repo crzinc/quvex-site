@@ -9,10 +9,26 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (!user) {
     redirect("/auth/login");
+  }
+
+  const role = user.app_metadata?.role as string | undefined;
+  if (role !== "admin") {
+    const { data: userStudio } = await supabase
+      .from("user_studios")
+      .select("studios(slug)")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const studios = userStudio?.studios as unknown;
+    const studioRow = Array.isArray(studios)
+      ? (studios as { slug: string }[])[0]
+      : (studios as { slug: string } | null);
+
+    redirect(studioRow?.slug ? `/studio/${studioRow.slug}` : "/");
   }
 
   return (

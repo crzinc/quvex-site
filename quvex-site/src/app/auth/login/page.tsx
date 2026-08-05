@@ -25,7 +25,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -36,8 +36,31 @@ export default function LoginPage() {
       return;
     }
 
+    const role = data.user.app_metadata?.role as string | undefined;
+
     toast.success(t("common.login_success"));
-    router.push("/dashboard");
+
+    if (role === "admin") {
+      router.push("/dashboard");
+    } else {
+      const { data: userStudio } = await supabase
+        .from("user_studios")
+        .select("studios(slug)")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+
+      const studios = userStudio?.studios as unknown;
+      const studioRow = Array.isArray(studios)
+        ? (studios as { slug: string }[])[0]
+        : (studios as { slug: string } | null);
+
+      if (studioRow?.slug) {
+        router.push(`/studio/${studioRow.slug}`);
+      } else {
+        router.push("/");
+      }
+    }
+
     router.refresh();
   };
 

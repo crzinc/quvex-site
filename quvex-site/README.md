@@ -1,36 +1,96 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Quvex Site
 
-## Getting Started
+Мультитенантная CRM для автодетейлинг студий. Next.js (App Router, Turbopack) + React 19 + Tailwind CSS v4 + Supabase.
 
-First, run the development server:
+## Запуск
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Открыть [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Переменные окружения (`.env.local`)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Переменная | Назначение |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | URL Supabase-проекта |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Публичный (anon) ключ — используется в клиенте и для входа |
+| `SUPABASE_SERVICE_ROLE_KEY` | Сервисный ключ — только на сервере (создание студий, сид услуг, квиз) |
 
-## Learn More
+## Роли
 
-To learn more about Next.js, take a look at the following resources:
+- **admin** — сотрудники Quvex, доступ к `/dashboard/*` (все данные всех студий, лиды, платежи).
+- **studio** — владелец студии, доступ только к своей CRM `/studio/[slug]/*` (изоляция данных через RLS и таблицу `user_studios`).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Маршруты
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Публичные
 
-## Deploy on Vercel
+| Маршрут | Описание |
+| --- | --- |
+| `/` | Лендинг + квиз (заявка лида) |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Авторизация
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Маршрут | Описание |
+| --- | --- |
+| `/auth/login` | Вход. После входа: admin → `/dashboard`, studio → свой `/studio/[slug]` |
+| `/auth/callback` | OAuth callback (exchange кода) |
+
+### Дашборд админа (`/dashboard`)
+
+| Маршрут | Описание |
+| --- | --- |
+| `/dashboard` | Главная — статистика и сводка |
+| `/dashboard/clients` | Список лидов/клиентов (из квиза) |
+| `/dashboard/clients/new` | Создать клиента вручную |
+| `/dashboard/clients/[id]` | Карточка клиента + заметки |
+| `/dashboard/messages` | Сообщения лидов |
+| `/dashboard/payments` | Платежи студий |
+| `/dashboard/requests` | Заявки с квиза |
+| `/dashboard/studios` | Список студий |
+| `/dashboard/studios/new` | Создание аккаунта студии (логин/пароль выдаются один раз) |
+| `/dashboard/studios/[id]` | Карточка студии: клиенты, записи, платежи |
+| `/dashboard/settings` | Настройки админа |
+
+### CRM студии (`/studio/[slug]`, доступ только для участника студии)
+
+| Маршрут | Описание |
+| --- | --- |
+| `/studio/[slug]` | Дашборд студии — статистика |
+| `/studio/[slug]/clients` | Клиенты студии |
+| `/studio/[slug]/clients/new` | Новый клиент |
+| `/studio/[slug]/clients/[id]` | Карточка клиента студии |
+| `/studio/[slug]/appointments` | Записи (при завершении создаётся доход и обновляется статистика клиента) |
+| `/studio/[slug]/appointments/new` | Новая запись |
+| `/studio/[slug]/services` | Услуги студии |
+| `/studio/[slug]/messages` | Сообщения студии |
+| `/studio/[slug]/finance` | Финансы: доходы, расходы, возвраты, баланс |
+| `/studio/[slug]/settings` | Настройки студии: профиль, логотип, тема (пресеты + свой цвет) |
+
+## Доступ и охрана маршрутов
+
+- `/dashboard/*` — только роль `admin`; остальные редиректятся в свою студию или на `/`.
+- `/studio/[slug]/*` — только участник студии (`user_studios`); иначе редирект на `/dashboard`.
+- Проверка роли идёт через `auth.getUser()` (валидирует токен на auth-сервере и берёт актуальный `app_metadata`), поэтому изменения роли применяются без повторного входа.
+- Доступ к данным в БД ограничен RLS: admin видит всё, владелец студии — только строки своей `studio_id`.
+
+## Схема данных
+
+`supabase-schema.sql` — мультитенантная схема: `studios`, `user_studios`, `studio_clients`, `studio_services`, `studio_appointments`, `studio_transactions`, `studio_messages`, `payments` + таблицы лидов (`clients`, `notes`, `notifications`). Применяется идемпотентно через Management API.
+
+## Скрипты
+
+| Скрипт | Описание |
+| --- | --- |
+| `scripts/promote-admin.mjs` | Назначить роль `admin` пользователю (email в аргументе) |
+| `scripts/verify-isolation.mjs` | Проверка изоляции тенантов (studio owner не видит данные других) |
+| `scripts/verify-admin.mjs` | Проверка полного доступа роли `admin` |
+
+```bash
+node scripts/promote-admin.mjs user@example.com
+node scripts/verify-isolation.mjs
+node scripts/verify-admin.mjs
+```

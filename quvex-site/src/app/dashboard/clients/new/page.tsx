@@ -73,7 +73,7 @@ export default function NewClientPage() {
               <Input label={t("form.company")} placeholder={t("form.company_placeholder")} value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Select label={t("clients.table_status")} options={statusOptions.map(o => ({ ...o, label: t(o.label) }))} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} />
+              <Select label={t("clients.table_status")} options={statusOptions.map(o => ({ ...o, label: t(o.label) }))} value={form.status} onChange={(value) => setForm({ ...form, status: value })} />
               <Input label={t("form.budget")} type="number" placeholder="5000" value={form.budget || ""} onChange={(e) => setForm({ ...form, budget: Number(e.target.value) })} />
             </div>
             <Input label={t("form.source")} placeholder={t("form.source_placeholder")} value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} />

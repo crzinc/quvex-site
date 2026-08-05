@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Bell, Search, CheckCheck } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { formatDate } from "@/lib/utils";
 import { useT } from "@/i18n/I18nProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -90,7 +91,7 @@ export default function DashboardHeader() {
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setShowNotif(!showNotif)}
-              className="relative p-2 text-zinc-400 hover:text-white transition-colors"
+              className={`relative p-2 text-zinc-400 hover:text-white transition-colors rounded-lg hover:bg-zinc-800/60 ${showNotif ? "bg-zinc-800/60 text-white" : ""}`}
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
@@ -100,43 +101,51 @@ export default function DashboardHeader() {
               )}
             </button>
 
-            {showNotif && (
-              <div className="absolute right-0 top-full mt-2 w-96 max-h-96 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden z-50">
-                <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-                  <h4 className="text-sm font-semibold">{t("header.notif_title")}</h4>
-                  {unreadCount > 0 && (
-                    <button onClick={markAllRead} className="text-xs text-primary hover:underline flex items-center gap-1">
-                      <CheckCheck className="w-3 h-3" /> {t("header.mark_read")}
-                    </button>
-                  )}
-                </div>
-                <div className="overflow-y-auto max-h-[300px]">
-                  {notifications.length === 0 ? (
-                    <p className="text-sm text-zinc-500 text-center py-8">{t("header.notif_empty")}</p>
-                  ) : (
-                    notifications.map((n) => (
-                      <button
-                        key={n.id}
-                        onClick={() => {
-                          if (n.client_id) router.push(`/dashboard/clients/${n.client_id}`);
-                          setShowNotif(false);
-                        }}
-                        className={`w-full text-left p-4 border-b border-zinc-800/50 hover:bg-zinc-800/50 transition-colors ${!n.read ? "bg-primary/5" : ""}`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${n.type === "quiz" ? "bg-purple-400" : "bg-blue-400"} ${n.read ? "opacity-30" : ""}`} />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-white truncate">{n.title}</p>
-                            <p className="text-xs text-zinc-400 mt-0.5 line-clamp-2">{n.message}</p>
-                            <p className="text-[10px] text-zinc-600 mt-1">{formatDate(n.created_at)}</p>
-                          </div>
-                        </div>
+            <AnimatePresence>
+              {showNotif && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="absolute right-0 top-full mt-2 w-96 max-h-96 bg-zinc-900/95 backdrop-blur-xl border border-zinc-800 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden z-50"
+                >
+                  <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+                    <h4 className="text-sm font-semibold">{t("header.notif_title")}</h4>
+                    {unreadCount > 0 && (
+                      <button onClick={markAllRead} className="text-xs text-primary hover:underline flex items-center gap-1">
+                        <CheckCheck className="w-3 h-3" /> {t("header.mark_read")}
                       </button>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
+                    )}
+                  </div>
+                  <div className="overflow-y-auto max-h-[300px]">
+                    {notifications.length === 0 ? (
+                      <p className="text-sm text-zinc-500 text-center py-8">{t("header.notif_empty")}</p>
+                    ) : (
+                      notifications.map((n) => (
+                        <button
+                          key={n.id}
+                          onClick={() => {
+                            if (n.client_id) router.push(`/dashboard/clients/${n.client_id}`);
+                            setShowNotif(false);
+                          }}
+                          className={`w-full text-left p-4 border-b border-zinc-800/50 hover:bg-zinc-800/50 transition-colors ${!n.read ? "bg-primary/5" : ""}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${n.type === "quiz" ? "bg-purple-400" : "bg-blue-400"} ${n.read ? "opacity-30" : ""}`} />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-white truncate">{n.title}</p>
+                              <p className="text-xs text-zinc-400 mt-0.5 line-clamp-2">{n.message}</p>
+                              <p className="text-[10px] text-zinc-600 mt-1">{formatDate(n.created_at)}</p>
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <div className="flex items-center gap-3 pl-4 border-l border-zinc-800">
