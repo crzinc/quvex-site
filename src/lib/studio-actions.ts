@@ -1,6 +1,7 @@
 "use server";
 
 import { createServiceClient } from "@/lib/supabase/service";
+import { createClient } from "@/lib/supabase/server";
 
 export interface StudioAccountInput {
   name: string;
@@ -199,4 +200,65 @@ export async function createStudioAccount(input: StudioAccountInput): Promise<St
     owner_email: email,
     password,
   };
+}
+
+export interface DeleteStudioResult {
+  ok: boolean;
+  error?: string;
+}
+
+export async function deleteStudio(studioId: string, confirmName: string): Promise<DeleteStudioResult> {
+  const supabase = createServiceClient();
+
+  const authClient = await createClient();
+  const { data: { user } } = await authClient.auth.getUser();
+  if (!user || user.app_metadata?.role !== "admin") {
+    return { ok: false, error: "Недостаточно прав" };
+  }
+
+  if (!studioId || !confirmName.trim()) {
+    return { ok: false, error: "Введите название студии для подтверждения" };
+  }
+
+  const { data: studio, error: studioError } = await supabase
+    .from("studios")
+    .select("id, name, owner_email")
+    .eq("id", studioId)
+    .maybeSingle();
+
+  if (studioError || !studio) {
+    return { ok: false, error: "Студия не найдена" };
+  }
+
+  if (studio.name.trim() !== confirmName.trim()) {
+    return { ok: false, error: "Название студии не совпадает" };
+  }
+
+  const { data: members } = await supabase
+    .from("user_studios")
+    .select("user_id")
+    .eq("studio_id", studioId);
+
+  const { error: deleteError } = await supabase.from("studios").delete().eq("id", studioId);
+
+  if (deleteError) {
+    return { ok: false, error: `Не удалось удалить студию: ${deleteError.message}` };
+  }
+
+  if (members) {
+    for (const member of members) {
+      const { data: otherMemberships } = await supabase
+        .from("user_studios")
+        .select("studio_id")
+        .eq("user_id", member.user_id)
+        .neq("studio_id", studioId)
+        .limit(1);
+
+      if (!otherMemberships || otherMemberships.length === 0) {
+        await supabase.auth.admin.deleteUser(member.user_id);
+      }
+    }
+  }
+
+  return { ok: true };
 }

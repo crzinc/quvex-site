@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building, Users, Calendar, DollarSign, MessageSquare } from "lucide-react";
+import { ArrowLeft, Building, Users, Calendar, DollarSign, MessageSquare, Trash2, AlertTriangle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { deleteStudio } from "@/lib/studio-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,11 +16,15 @@ import type { Studio, StudioClient, StudioAppointment, Payment } from "@/types";
 
 export default function DashboardStudioDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const [studio, setStudio] = useState<Studio | null>(null);
   const [clients, setClients] = useState<StudioClient[]>([]);
   const [appointments, setAppointments] = useState<(StudioAppointment & { studio_clients?: { name: string }; studio_services?: { name: string } })[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmName, setConfirmName] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const supabase = useRef(createClient());
 
   useEffect(() => {
@@ -69,6 +76,21 @@ export default function DashboardStudioDetailPage() {
     if (!error) {
       setPayments(payments.map((p) => p.id === paymentId ? { ...p, status: status as Payment["status"], confirmed_at: new Date().toISOString() } : p));
     }
+  };
+
+  const handleDelete = async () => {
+    if (!studio || confirmName.trim() !== studio.name.trim()) return;
+    setDeleting(true);
+    const result = await deleteStudio(studio.id, confirmName);
+    setDeleting(false);
+
+    if (!result.ok) {
+      toast.error(result.error || "Не удалось удалить студию");
+      return;
+    }
+
+    toast.success(`Студия «${studio.name}» удалена`);
+    router.push("/dashboard/studios");
   };
 
   if (loading) {
@@ -261,6 +283,90 @@ export default function DashboardStudioDetailPage() {
               </table>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-red-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-red-400">
+            <Trash2 className="w-5 h-5" />
+            Опасная зона
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AnimatePresence mode="wait">
+            {!confirmOpen ? (
+              <motion.div
+                key="step1"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.15 }}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              >
+                <div>
+                  <p className="text-sm font-medium">Удалить студию</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Безвозвратно удалит студию, всех клиентов, записи, услуги, финансы и аккаунт владельца.
+                  </p>
+                </div>
+                <Button variant="danger" onClick={() => setConfirmOpen(true)} className="flex-shrink-0">
+                  <Trash2 className="w-4 h-4" />
+                  Удалить студию
+                </Button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="step2"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.15 }}
+                className="space-y-4"
+              >
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                  <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-red-300">
+                    Это действие нельзя отменить. Все данные студии <b>{studio.name}</b> будут удалены навсегда.
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm text-zinc-400 block">
+                    Введите название студии <span className="text-zinc-600">«{studio.name}»</span>, чтобы подтвердить:
+                  </label>
+                  <input
+                    value={confirmName}
+                    onChange={(e) => setConfirmName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && confirmName.trim() === studio.name.trim()) handleDelete();
+                    }}
+                    placeholder={studio.name}
+                    className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/25 transition-all duration-200"
+                    autoFocus
+                  />
+                  {confirmName.trim() !== studio.name.trim() && confirmName.trim() !== "" && (
+                    <p className="text-xs text-red-400">Название не совпадает</p>
+                  )}
+                </div>
+
+                <div className="flex gap-3 justify-end">
+                  <Button variant="outline" onClick={() => { setConfirmOpen(false); setConfirmName(""); }}>
+                    Отмена
+                  </Button>
+                  <Button
+                    variant="danger"
+                    loading={deleting}
+                    disabled={confirmName.trim() !== studio.name.trim()}
+                    onClick={handleDelete}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Подтвердить удаление
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </CardContent>
       </Card>
     </div>
