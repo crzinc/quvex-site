@@ -53,10 +53,6 @@ export function getStatusColor(status: string) {
     // Message statuses
     case "resolved": return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
     case "closed": return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
-    // Plan statuses
-    case "basic": return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
-    case "pro": return "bg-purple-500/10 text-purple-400 border-purple-500/20";
-    case "enterprise": return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
     // Priority
     case "low": return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
     case "normal": return "bg-blue-500/10 text-blue-400 border-blue-500/20";
@@ -86,9 +82,6 @@ export function getStatusLabel(status: string) {
     case "overdue": return "Просрочено";
     case "resolved": return "Решено";
     case "closed": return "Закрыто";
-    case "basic": return "Базовый";
-    case "pro": return "Профессиональный";
-    case "enterprise": return "Корпоративный";
     case "low": return "Низкий";
     case "normal": return "Обычный";
     case "high": return "Высокий";

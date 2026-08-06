@@ -59,7 +59,6 @@ export interface Studio {
   description: string;
   logo_url: string;
   is_active: boolean;
-  plan: "basic" | "pro" | "enterprise";
   settings: Record<string, unknown>;
   updated_at: string;
 }
@@ -203,6 +202,5 @@ export interface AdminDashboardStats {
   unread_messages: number;
   total_revenue: number;
   pending_payments: number;
-  studios_by_plan: { plan: string; count: number }[];
   recent_messages: StudioMessage[];
 }

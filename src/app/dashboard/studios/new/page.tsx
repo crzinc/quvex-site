@@ -20,7 +20,6 @@ export default function DashboardNewStudioPage() {
     owner_phone: "",
     address: "",
     description: "",
-    plan: "basic",
     password: "",
     payment_amount: "",
     payment_method: "cash",
@@ -36,7 +35,6 @@ export default function DashboardNewStudioPage() {
       owner_phone: form.owner_phone,
       address: form.address,
       description: form.description,
-      plan: form.plan as StudioAccountInput["plan"],
       password: form.password || undefined,
       payment_amount: form.payment_amount ? parseFloat(form.payment_amount) : undefined,
       payment_method: form.payment_method as StudioAccountInput["payment_method"],
@@ -174,24 +172,14 @@ export default function DashboardNewStudioPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Тариф и доступ</CardTitle>
+            <CardTitle>Оплата и доступ</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Select
-                label="Тариф"
-                value={form.plan}
-                onChange={(value) => setForm({ ...form, plan: value })}
-                options={[
-                  { value: "basic", label: "Базовый — 1 990 ₽/мес" },
-                  { value: "pro", label: "Про — 4 990 ₽/мес" },
-                  { value: "enterprise", label: "Корпоративный — 14 900 ₽/мес" },
-                ]}
-              />
               <Input
                 label="Внесённая сумма (₽)"
                 type="number"
-                placeholder="1990"
+                placeholder="Стоимость продукта"
                 value={form.payment_amount}
                 onChange={(e) => setForm({ ...form, payment_amount: e.target.value })}
               />

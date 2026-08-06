@@ -9,7 +9,6 @@ export interface StudioAccountInput {
   owner_phone?: string;
   address?: string;
   description?: string;
-  plan: "basic" | "pro" | "enterprise";
   password?: string;
   payment_amount?: number;
   payment_method?: "cash" | "card" | "transfer" | "other";
@@ -42,12 +41,6 @@ const DEFAULT_SERVICES: {
   { name: "Детейлинг двигателя", description: "Чистка и защита моторного отсека", price: 3000, duration_minutes: 90, category: "detailing" },
   { name: "Коррекция ЛКП", description: "Удаление царапин и коррекция лакового покрытия", price: 12000, duration_minutes: 240, category: "detailing" },
 ];
-
-const PLAN_PRICES: Record<string, number> = {
-  basic: 1990,
-  pro: 4990,
-  enterprise: 14900,
-};
 
 function transliterate(text: string): string {
   const map: Record<string, string> = {
@@ -128,7 +121,6 @@ export async function createStudioAccount(input: StudioAccountInput): Promise<St
       owner_phone: input.owner_phone || "",
       address: input.address || "",
       description: input.description || "",
-      plan: input.plan,
       settings: {
         primary_color: "#a855f7",
         primary_dark: "#7c3aed",
@@ -173,7 +165,7 @@ export async function createStudioAccount(input: StudioAccountInput): Promise<St
     console.error("Seed services error:", servicesError.message);
   }
 
-  const amount = input.payment_amount ?? PLAN_PRICES[input.plan];
+  const amount = input.payment_amount ?? 0;
   const now = new Date();
   const periodStart = now.toISOString().slice(0, 10);
   const periodEnd = new Date(now.setMonth(now.getMonth() + 1)).toISOString().slice(0, 10);

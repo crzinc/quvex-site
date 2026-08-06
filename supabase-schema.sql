@@ -77,7 +77,6 @@ CREATE TABLE IF NOT EXISTS public.studios (
   description TEXT DEFAULT '',
   logo_url TEXT DEFAULT '',
   is_active BOOLEAN DEFAULT true,
-  plan TEXT DEFAULT 'basic' CHECK (plan IN ('basic', 'pro', 'enterprise')),
   settings JSONB DEFAULT '{}'::jsonb,
   updated_at TIMESTAMPTZ DEFAULT now()
 );

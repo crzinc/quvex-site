@@ -30,9 +30,9 @@ export default function Footer() {
           <div>
             <h4 className="text-sm font-medium mb-4">{t("footer.contacts_title")}</h4>
             <ul className="space-y-2 text-sm text-zinc-500">
-              <li>hello@quvex.dev</li>
-              <li>+7 (999) 999-99-99</li>
-              <li>Moscow, Russia</li>
+              <li>owner@quvex.org</li>
+              <li>+994104759323</li>
+              <li>Baku, Azerbaijan</li>
             </ul>
           </div>
         </div>

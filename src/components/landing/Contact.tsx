@@ -45,7 +45,7 @@ export default function Contact() {
               </div>
               <div>
                 <p className="font-medium mb-1">Email</p>
-                <p className="text-sm text-zinc-400">hello@quvex.dev</p>
+                <p className="text-sm text-zinc-400">owner@quvex.org</p>
               </div>
             </div>
             <div className="flex items-start gap-4">
@@ -54,7 +54,7 @@ export default function Contact() {
               </div>
               <div>
                 <p className="font-medium mb-1">{t("contact.badge")}</p>
-                <p className="text-sm text-zinc-400">+7 (999) 999-99-99</p>
+                <p className="text-sm text-zinc-400">+994104759323</p>
               </div>
             </div>
             <div className="flex items-start gap-4">
@@ -63,7 +63,7 @@ export default function Contact() {
               </div>
               <div>
                 <p className="font-medium mb-1">Location</p>
-                <p className="text-sm text-zinc-400">Moscow, Russia</p>
+                <p className="text-sm text-zinc-400">Baku, Azerbaijan</p>
               </div>
             </div>
           </motion.div>

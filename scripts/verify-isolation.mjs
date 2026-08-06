@@ -43,7 +43,7 @@ console.log("user created:", userId);
 
 const { data: studio, error: studioError } = await service
   .from("studios")
-  .insert({ name: studioName, slug: `test-${stamp}`, owner_email: studioEmail, plan: "basic", settings: { primary_color: "#a855f7" } })
+  .insert({ name: studioName, slug: `test-${stamp}`, owner_email: studioEmail, settings: { primary_color: "#a855f7" } })
   .select()
   .single();
 if (studioError) { console.error("insert studio FAIL", studioError.message); process.exit(1); }

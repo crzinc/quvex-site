@@ -7,8 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getStatusColor, formatDate, getStatusLabel } from "@/lib/utils";
-import type { Studio } from "@/types";
+import { formatDate } from "@/lib/utils";import type { Studio } from "@/types";
 
 export default function DashboardStudiosPage() {
   const [studios, setStudios] = useState<Studio[]>([]);
@@ -66,9 +65,6 @@ export default function DashboardStudiosPage() {
                       <p className="text-xs text-zinc-500">/{studio.slug}</p>
                     </div>
                   </div>
-                  <Badge className={getStatusColor(studio.plan)}>
-                    {getStatusLabel(studio.plan)}
-                  </Badge>
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">

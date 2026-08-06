@@ -124,7 +124,6 @@ export default function DashboardStudioDetailPage() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{studio.name}</h1>
-            <Badge className={getStatusColor(studio.plan)}>{getStatusLabel(studio.plan)}</Badge>
             <Badge className={studio.is_active ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}>
               {studio.is_active ? "Активна" : "Неактивна"}
             </Badge>

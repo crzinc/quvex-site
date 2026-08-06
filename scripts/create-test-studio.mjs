@@ -12,7 +12,7 @@ const { data:u, error:ue } = await s.auth.admin.createUser({ email, password, em
 if (ue) { console.error("createUser:", ue.message); process.exit(1); }
 
 const { data:studio, error:se } = await s.from("studios").insert({
-  name, slug:`test-studio-${stamp}`, owner_email:email, plan:"basic",
+  name, slug:`test-studio-${stamp}`, owner_email:email,
   settings:{ primary_color:"#a855f7" },
 }).select().single();
 if (se) { console.error("studio:", se.message); process.exit(1); }
