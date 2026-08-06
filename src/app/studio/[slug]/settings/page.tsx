@@ -10,21 +10,23 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { getStudioTheme, cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useT } from "@/i18n/I18nProvider";
 
-const THEME_PRESETS: { name: string; primary: string; primary_dark: string; primary_light: string }[] = [
-  { name: "Фиолетовый", primary: "#a855f7", primary_dark: "#7c3aed", primary_light: "#c084fc" },
-  { name: "Синий", primary: "#3b82f6", primary_dark: "#2563eb", primary_light: "#60a5fa" },
-  { name: "Бирюзовый", primary: "#14b8a6", primary_dark: "#0d9488", primary_light: "#2dd4bf" },
-  { name: "Изумрудный", primary: "#10b981", primary_dark: "#059669", primary_light: "#34d399" },
-  { name: "Янтарный", primary: "#f59e0b", primary_dark: "#d97706", primary_light: "#fbbf24" },
-  { name: "Красный", primary: "#ef4444", primary_dark: "#dc2626", primary_light: "#f87171" },
-  { name: "Розовый", primary: "#ec4899", primary_dark: "#db2777", primary_light: "#f472b6" },
-  { name: "Белый", primary: "#fafafa", primary_dark: "#e4e4e7", primary_light: "#ffffff" },
+const THEME_PRESETS: { id: string; primary: string; primary_dark: string; primary_light: string }[] = [
+  { id: "purple", primary: "#a855f7", primary_dark: "#7c3aed", primary_light: "#c084fc" },
+  { id: "blue", primary: "#3b82f6", primary_dark: "#2563eb", primary_light: "#60a5fa" },
+  { id: "teal", primary: "#14b8a6", primary_dark: "#0d9488", primary_light: "#2dd4bf" },
+  { id: "emerald", primary: "#10b981", primary_dark: "#059669", primary_light: "#34d399" },
+  { id: "amber", primary: "#f59e0b", primary_dark: "#d97706", primary_light: "#fbbf24" },
+  { id: "red", primary: "#ef4444", primary_dark: "#dc2626", primary_light: "#f87171" },
+  { id: "pink", primary: "#ec4899", primary_dark: "#db2777", primary_light: "#f472b6" },
+  { id: "white", primary: "#fafafa", primary_dark: "#e4e4e7", primary_light: "#ffffff" },
 ];
 
 export default function StudioSettingsPage() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
+  const { t } = useT();
   const supabase = useRef(createClient());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -81,9 +83,9 @@ export default function StudioSettingsPage() {
       .eq("slug", params.slug);
 
     if (error) {
-      toast.error("Ошибка при сохранении");
+      toast.error(t("common.save_error"));
     } else {
-      toast.success("Настройки сохранены");
+      toast.success(t("common.settings_saved"));
       router.refresh();
     }
 
@@ -92,7 +94,7 @@ export default function StudioSettingsPage() {
 
   const handleLogout = async () => {
     await supabase.current.auth.signOut();
-    toast.success("Вы вышли из системы");
+    toast.success(t("studio.logged_out"));
     router.push("/");
     router.refresh();
   };
@@ -108,33 +110,33 @@ export default function StudioSettingsPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold mb-1">Настройки</h1>
-        <p className="text-sm text-zinc-400">Настройки и персонализация вашей CRM</p>
+        <h1 className="text-2xl font-bold mb-1">{t("studio.settings.title")}</h1>
+        <p className="text-sm text-zinc-400">{t("studio.settings.subtitle")}</p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building className="w-5 h-5" />
-            Информация о студии
+            {t("studio.settings.studio_info")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <Input
-            label="Название студии"
+            label={t("studio.settings.name")}
             placeholder="Мой Автодетейлинг"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
           />
           <div className="grid sm:grid-cols-2 gap-4">
             <Input
-              label="Адрес"
+              label={t("studio.settings.address")}
               placeholder="ул. Примерная, 123"
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
             />
             <Input
-              label="Телефон"
+              label={t("studio.settings.phone")}
               type="tel"
               placeholder="+7 (999) 123-45-67"
               value={form.owner_phone}
@@ -142,8 +144,8 @@ export default function StudioSettingsPage() {
             />
           </div>
           <Textarea
-            label="Описание"
-            placeholder="Описание вашего автодетейлинга..."
+            label={t("studio.settings.description")}
+            placeholder={t("studio.settings.description_placeholder")}
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             rows={3}
@@ -155,18 +157,18 @@ export default function StudioSettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Palette className="w-5 h-5" />
-            Персонализация
+            {t("studio.settings.personalization")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <p className="text-sm text-zinc-400 mb-3">Цвет вашей CRM</p>
+            <p className="text-sm text-zinc-400 mb-3">{t("studio.settings.color")}</p>
             <div className="flex flex-wrap gap-3">
               {THEME_PRESETS.map((preset) => (
                 <button
-                  key={preset.name}
+                  key={preset.id}
                   type="button"
-                  title={preset.name}
+                  title={t(`theme.${preset.id}`)}
                   onClick={() => setTheme({ primary: preset.primary, primary_dark: preset.primary_dark, primary_light: preset.primary_light })}
                   className={cn(
                     "w-10 h-10 rounded-xl border-2 transition-all cursor-pointer",
@@ -181,7 +183,7 @@ export default function StudioSettingsPage() {
           </div>
 
           <div>
-            <p className="text-sm text-zinc-400 mb-2">Свой цвет (hex)</p>
+            <p className="text-sm text-zinc-400 mb-2">{t("studio.settings.custom_color")}</p>
             <div className="flex items-center gap-3">
               <input
                 type="color"
@@ -199,7 +201,7 @@ export default function StudioSettingsPage() {
           </div>
 
           <div>
-            <p className="text-sm text-zinc-400 mb-2">Логотип студии (URL)</p>
+            <p className="text-sm text-zinc-400 mb-2">{t("studio.settings.logo")}</p>
             <Input
               placeholder="https://.../logo.png"
               value={form.logo_url}
@@ -208,7 +210,7 @@ export default function StudioSettingsPage() {
           </div>
 
           <div className="p-4 rounded-xl bg-zinc-800/50">
-            <p className="text-xs text-zinc-500 mb-3">Предпросмотр</p>
+            <p className="text-xs text-zinc-500 mb-3">{t("studio.settings.preview")}</p>
             <div className="flex items-center gap-3">
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold"
@@ -218,10 +220,10 @@ export default function StudioSettingsPage() {
               </div>
               <div className="flex gap-2">
                 <span className="px-3 py-1.5 rounded-lg text-white text-sm font-medium" style={{ backgroundColor: theme.primary }}>
-                  Кнопка
+                  {t("studio.settings.button")}
                 </span>
                 <span className="px-3 py-1.5 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: theme.primary_dark }}>
-                  Кнопка
+                  {t("studio.settings.button")}
                 </span>
               </div>
             </div>
@@ -230,22 +232,22 @@ export default function StudioSettingsPage() {
       </Card>
 
       <div className="flex gap-4">
-        <Button onClick={handleSave} loading={saving}>Сохранить</Button>
+        <Button onClick={handleSave} loading={saving}>{t("studio.settings.save")}</Button>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5" />
-            Управление аккаунтом
+            {t("studio.settings.account")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <Button variant="outline" onClick={() => router.push("/auth/login")}>
-            <LogIn className="w-4 h-4" /> Сменить пользователя
+            <LogIn className="w-4 h-4" /> {t("studio.settings.switch_user")}
           </Button>
           <Button variant="danger" onClick={handleLogout}>
-            <LogOut className="w-4 h-4" /> Выйти из системы
+            <LogOut className="w-4 h-4" /> {t("studio.settings.logout")}
           </Button>
         </CardContent>
       </Card>

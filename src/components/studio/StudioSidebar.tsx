@@ -17,6 +17,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { useT } from "@/i18n/I18nProvider";
 
 interface StudioSidebarProps {
   slug: string;
@@ -28,20 +29,21 @@ export default function StudioSidebar({ slug, studioName, studioLogo }: StudioSi
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const { t } = useT();
 
   const links = [
-    { href: `/studio/${slug}`, label: "Dashboard", icon: LayoutDashboard },
-    { href: `/studio/${slug}/clients`, label: "Клиенты", icon: Users },
-    { href: `/studio/${slug}/services`, label: "Услуги", icon: Scissors },
-    { href: `/studio/${slug}/appointments`, label: "Записи", icon: Calendar },
-    { href: `/studio/${slug}/finance`, label: "Финансы", icon: Wallet },
-    { href: `/studio/${slug}/messages`, label: "Сообщения", icon: MessageSquare },
-    { href: `/studio/${slug}/settings`, label: "Настройки", icon: Settings },
+    { href: `/studio/${slug}`, label: t("studio.sidebar.dashboard"), icon: LayoutDashboard },
+    { href: `/studio/${slug}/clients`, label: t("studio.sidebar.clients"), icon: Users },
+    { href: `/studio/${slug}/services`, label: t("studio.sidebar.services"), icon: Scissors },
+    { href: `/studio/${slug}/appointments`, label: t("studio.sidebar.appointments"), icon: Calendar },
+    { href: `/studio/${slug}/finance`, label: t("studio.sidebar.finance"), icon: Wallet },
+    { href: `/studio/${slug}/messages`, label: t("studio.sidebar.messages"), icon: MessageSquare },
+    { href: `/studio/${slug}/settings`, label: t("studio.sidebar.settings"), icon: Settings },
   ];
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    toast.success("Вы вышли из системы");
+    toast.success(t("studio.logged_out"));
     router.push("/");
     router.refresh();
   };
@@ -90,14 +92,14 @@ export default function StudioSidebar({ slug, studioName, studioLogo }: StudioSi
           className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-all"
         >
           <Plus className="w-4 h-4" />
-          Новый клиент
+          {t("studio.sidebar.new_client")}
         </Link>
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-zinc-400 hover:text-accent hover:bg-accent/5 transition-all w-full"
         >
           <LogOut className="w-4 h-4" />
-          Выйти
+          {t("studio.sidebar.logout")}
         </button>
       </div>
     </aside>

@@ -1,9 +1,15 @@
+"use client";
+
+import { useT } from "@/i18n/I18nProvider";
+
 export default function DashboardLoading() {
+  const { t } = useT();
+
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="flex flex-col items-center gap-4">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-zinc-400">Загрузка...</p>
+        <p className="text-sm text-zinc-400">{t("common.loading")}</p>
       </div>
     </div>
   );

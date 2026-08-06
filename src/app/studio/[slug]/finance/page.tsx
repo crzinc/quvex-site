@@ -10,10 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { formatDate, formatCurrency, getPaymentMethodLabel } from "@/lib/utils";
 import { toast } from "sonner";
+import { useT } from "@/i18n/I18nProvider";
 import type { StudioTransaction } from "@/types";
 
 export default function StudioFinancePage() {
   const params = useParams<{ slug: string }>();
+  const { t } = useT();
   const supabase = useRef(createClient());
   const [transactions, setTransactions] = useState<StudioTransaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +56,7 @@ export default function StudioFinancePage() {
   const handleAdd = async () => {
     const amount = parseFloat(form.amount);
     if (!amount || amount <= 0) {
-      toast.error("Введите корректную сумму");
+      toast.error(t("common.invalid_amount"));
       return;
     }
 
@@ -76,9 +78,9 @@ export default function StudioFinancePage() {
     });
 
     if (error) {
-      toast.error("Ошибка при добавлении операции");
+      toast.error(t("common.transaction_error"));
     } else {
-      toast.success(form.type === "income" ? "Доход добавлен" : "Расход добавлен");
+      toast.success(form.type === "income" ? t("common.income_added") : t("common.expense_added"));
       setForm({ type: "income", amount: "", category: "service", payment_method: "cash", description: "" });
       setShowForm(false);
       fetchTransactions();
@@ -100,21 +102,21 @@ export default function StudioFinancePage() {
   }
 
   const statCards = [
-    { title: "Доход за месяц", value: formatCurrency(monthIncome), icon: TrendingUp, color: "text-emerald-400" },
-    { title: "Всего доход", value: formatCurrency(income), icon: ArrowDownLeft, color: "text-emerald-400" },
-    { title: "Расходы", value: formatCurrency(expenses), icon: TrendingDown, color: "text-accent" },
-    { title: "Баланс", value: formatCurrency(income - expenses), icon: Wallet, color: "text-primary" },
+    { title: t("studio.finance.month_income"), value: formatCurrency(monthIncome), icon: TrendingUp, color: "text-emerald-400" },
+    { title: t("studio.finance.total_income"), value: formatCurrency(income), icon: ArrowDownLeft, color: "text-emerald-400" },
+    { title: t("studio.finance.expenses"), value: formatCurrency(expenses), icon: TrendingDown, color: "text-accent" },
+    { title: t("studio.finance.balance"), value: formatCurrency(income - expenses), icon: Wallet, color: "text-primary" },
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold mb-1">Финансы</h1>
-          <p className="text-sm text-zinc-400">Доходы и расходы студии</p>
+          <h1 className="text-2xl font-bold mb-1">{t("studio.finance.title")}</h1>
+          <p className="text-sm text-zinc-400">{t("studio.finance.subtitle")}</p>
         </div>
         <Button onClick={() => setShowForm(!showForm)}>
-          <Plus className="w-4 h-4" /> Добавить операцию
+          <Plus className="w-4 h-4" /> {t("studio.finance.add")}
         </Button>
       </div>
 
@@ -139,21 +141,21 @@ export default function StudioFinancePage() {
       {showForm && (
         <Card>
           <CardContent className="p-6">
-            <h3 className="font-medium mb-4">Новая операция</h3>
+            <h3 className="font-medium mb-4">{t("studio.finance.new_op")}</h3>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <Select
-                  label="Тип"
+                  label={t("studio.finance.type")}
                   value={form.type}
                   onChange={(value) => setForm({ ...form, type: value })}
                   options={[
-                    { value: "income", label: "Доход" },
-                    { value: "expense", label: "Расход" },
-                    { value: "refund", label: "Возврат" },
+                    { value: "income", label: t("studio.finance.income") },
+                    { value: "expense", label: t("studio.finance.expense") },
+                    { value: "refund", label: t("studio.finance.refund") },
                   ]}
                 />
                 <Input
-                  label="Сумма (₽) *"
+                  label={`${t("studio.finance.amount")} *`}
                   type="number"
                   placeholder="5000"
                   value={form.amount}
@@ -162,37 +164,37 @@ export default function StudioFinancePage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <Select
-                  label="Категория"
+                  label={t("studio.finance.category")}
                   value={form.category}
                   onChange={(value) => setForm({ ...form, category: value })}
                   options={[
-                    { value: "service", label: "Услуга" },
-                    { value: "product", label: "Товар" },
-                    { value: "subscription", label: "Подписка" },
-                    { value: "other", label: "Другое" },
+                    { value: "service", label: t("category.service") },
+                    { value: "product", label: t("category.product") },
+                    { value: "subscription", label: t("category.subscription") },
+                    { value: "other", label: t("category.other") },
                   ]}
                 />
                 <Select
-                  label="Способ оплаты"
+                  label={t("studio.finance.method")}
                   value={form.payment_method}
                   onChange={(value) => setForm({ ...form, payment_method: value })}
                   options={[
-                    { value: "cash", label: "Наличные" },
-                    { value: "card", label: "Карта" },
-                    { value: "transfer", label: "Перевод" },
-                    { value: "other", label: "Другое" },
+                    { value: "cash", label: t("payment_method.cash") },
+                    { value: "card", label: t("payment_method.card") },
+                    { value: "transfer", label: t("payment_method.transfer") },
+                    { value: "other", label: t("payment_method.other") },
                   ]}
                 />
               </div>
               <Input
-                label="Описание"
-                placeholder="Например: полировка BMW X5"
+                label={t("studio.finance.description")}
+                placeholder={t("studio.finance.description_placeholder")}
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
               />
               <div className="flex gap-2">
-                <Button onClick={handleAdd}>Добавить</Button>
-                <Button variant="outline" onClick={() => setShowForm(false)}>Отмена</Button>
+                <Button onClick={handleAdd}>{t("studio.finance.add_btn")}</Button>
+                <Button variant="outline" onClick={() => setShowForm(false)}>{t("studio.finance.cancel")}</Button>
               </div>
             </div>
           </CardContent>
@@ -202,44 +204,44 @@ export default function StudioFinancePage() {
       <Card>
         <CardContent className="p-0">
           {transactions.length === 0 ? (
-            <p className="text-sm text-zinc-500 text-center py-12">Нет операций</p>
+            <p className="text-sm text-zinc-500 text-center py-12">{t("studio.finance.empty")}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-zinc-800">
-                    <th className="text-left p-4 text-zinc-400 font-medium">Дата</th>
-                    <th className="text-left p-4 text-zinc-400 font-medium">Тип</th>
-                    <th className="text-left p-4 text-zinc-400 font-medium">Описание</th>
-                    <th className="text-left p-4 text-zinc-400 font-medium">Способ</th>
-                    <th className="text-right p-4 text-zinc-400 font-medium">Сумма</th>
+                    <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.date")}</th>
+                    <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.type_col")}</th>
+                    <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.desc_col")}</th>
+                    <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.method_col")}</th>
+                    <th className="text-right p-4 text-zinc-400 font-medium">{t("studio.finance.amount_col")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {transactions.map((t) => (
-                    <tr key={t.id} className="border-b border-zinc-800/50">
-                      <td className="p-4 text-zinc-500">{formatDate(t.created_at)}</td>
+                  {transactions.map((tx) => (
+                    <tr key={tx.id} className="border-b border-zinc-800/50">
+                      <td className="p-4 text-zinc-500">{formatDate(tx.created_at)}</td>
                       <td className="p-4">
                         <span
                           className={
-                            t.type === "income"
+                            tx.type === "income"
                               ? "text-emerald-400 flex items-center gap-1.5"
                               : "text-accent flex items-center gap-1.5"
                           }
                         >
-                          {t.type === "income" ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
-                          {t.type === "income" ? "Доход" : t.type === "expense" ? "Расход" : "Возврат"}
+                          {tx.type === "income" ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
+                          {tx.type === "income" ? t("studio.finance.income") : tx.type === "expense" ? t("studio.finance.expense") : t("studio.finance.refund")}
                         </span>
                       </td>
-                      <td className="p-4 text-zinc-300">{t.description || "—"}</td>
-                      <td className="p-4 text-zinc-500">{getPaymentMethodLabel(t.payment_method)}</td>
+                      <td className="p-4 text-zinc-300">{tx.description || "—"}</td>
+                      <td className="p-4 text-zinc-500">{getPaymentMethodLabel(tx.payment_method, t)}</td>
                       <td
                         className={`p-4 text-right font-medium ${
-                          t.type === "income" ? "text-emerald-400" : "text-accent"
+                          tx.type === "income" ? "text-emerald-400" : "text-accent"
                         }`}
                       >
-                        {t.type === "income" ? "+" : "−"}
-                        {formatCurrency(Number(t.amount))}
+                        {tx.type === "income" ? "+" : "−"}
+                        {formatCurrency(Number(tx.amount))}
                       </td>
                     </tr>
                   ))}

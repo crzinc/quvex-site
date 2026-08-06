@@ -9,12 +9,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { formatDate, formatCurrency, getStatusColor } from "@/lib/utils";
+import { formatDate, formatCurrency, getStatusColor, getStatusLabel } from "@/lib/utils";
 import { toast } from "sonner";
+import { useT } from "@/i18n/I18nProvider";
 import type { StudioAppointment } from "@/types";
 
 export default function StudioAppointmentsPage() {
   const params = useParams<{ slug: string }>();
+  const { t } = useT();
   const [appointments, setAppointments] = useState<(StudioAppointment & { studio_clients?: { name: string; phone: string }; studio_services?: { name: string; price: number } })[]>([]);
   const [clients, setClients] = useState<{ id: string; name: string; phone: string }[]>([]);
   const [services, setServices] = useState<{ id: string; name: string; price: number; duration_minutes: number }[]>([]);
@@ -90,9 +92,9 @@ export default function StudioAppointmentsPage() {
     });
 
     if (error) {
-      toast.error("Ошибка при создании записи");
+      toast.error(t("common.appointment_error"));
     } else {
-      toast.success("Запись создана");
+      toast.success(t("common.appointment_created"));
       setShowForm(false);
       setForm({ client_id: "", service_id: "", scheduled_at: "", notes: "" });
       fetchData();
@@ -116,7 +118,7 @@ export default function StudioAppointmentsPage() {
           amount: Number(apt.final_price) || 0,
           category: "service",
           payment_method: "cash",
-          description: "Выполненная запись",
+          description: t("common.completed_visit"),
         });
 
         if (txError) console.error("Transaction insert error:", txError.message);
@@ -148,9 +150,9 @@ export default function StudioAppointmentsPage() {
       .eq("id", id);
 
     if (error) {
-      toast.error("Ошибка при обновлении");
+      toast.error(t("common.status_error"));
     } else {
-      toast.success("Статус обновлен");
+      toast.success(t("common.status_updated"));
       fetchData();
     }
   };
@@ -171,46 +173,46 @@ export default function StudioAppointmentsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold mb-1">Записи</h1>
-          <p className="text-sm text-zinc-400">{appointments.length} записей</p>
+          <h1 className="text-2xl font-bold mb-1">{t("studio.appointments.title")}</h1>
+          <p className="text-sm text-zinc-400">{appointments.length} {t("studio.appointments.count")}</p>
         </div>
         <Button onClick={() => setShowForm(!showForm)}>
-          <Plus className="w-4 h-4" /> Новая запись
+          <Plus className="w-4 h-4" /> {t("studio.appointments.new")}
         </Button>
       </div>
 
       {showForm && (
         <Card>
           <CardContent className="p-6">
-            <h3 className="font-medium mb-4">Новая запись</h3>
+            <h3 className="font-medium mb-4">{t("studio.appointments.new")}</h3>
             <div className="space-y-4">
               <Select
-                label="Клиент *"
+                label={`${t("studio.appointments.client")} *`}
                 value={form.client_id}
                 onChange={(value) => setForm({ ...form, client_id: value })}
                 options={clients.map((c) => ({ value: c.id, label: `${c.name} (${c.phone})` }))}
               />
               <Select
-                label="Услуга"
+                label={t("studio.appointments.service")}
                 value={form.service_id}
                 onChange={(value) => setForm({ ...form, service_id: value })}
                 options={services.map((s) => ({ value: s.id, label: `${s.name} - ${formatCurrency(s.price)}` }))}
               />
               <Input
-                label="Дата и время *"
+                label={`${t("studio.appointments.datetime")} *`}
                 type="datetime-local"
                 value={form.scheduled_at}
                 onChange={(e) => setForm({ ...form, scheduled_at: e.target.value })}
               />
               <Input
-                label="Заметки"
-                placeholder="Дополнительная информация..."
+                label={t("studio.appointments.notes")}
+                placeholder={t("studio.appointments.notes_placeholder")}
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
               />
               <div className="flex gap-2">
-                <Button onClick={handleCreate}>Создать</Button>
-                <Button variant="outline" onClick={() => setShowForm(false)}>Отмена</Button>
+                <Button onClick={handleCreate}>{t("studio.appointments.create")}</Button>
+                <Button variant="outline" onClick={() => setShowForm(false)}>{t("studio.appointments.cancel")}</Button>
               </div>
             </div>
           </CardContent>
@@ -225,7 +227,7 @@ export default function StudioAppointmentsPage() {
             size="sm"
             onClick={() => setFilter(f)}
           >
-            {f === "all" ? "Все" : f === "scheduled" ? "Запланировано" : f === "in_progress" ? "В работе" : f === "completed" ? "Выполнено" : "Отменено"}
+            {f === "all" ? t("studio.appointments.all") : getStatusLabel(f, t)}
           </Button>
         ))}
       </div>
@@ -234,7 +236,7 @@ export default function StudioAppointmentsPage() {
         {filteredAppointments.length === 0 ? (
           <div className="text-center py-12">
             <Calendar className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
-            <p className="text-zinc-500">Нет записей</p>
+            <p className="text-zinc-500">{t("studio.appointments.empty")}</p>
           </div>
         ) : (
           filteredAppointments.map((apt) => (
@@ -246,9 +248,9 @@ export default function StudioAppointmentsPage() {
                       <Calendar className="w-5 h-5 text-zinc-400" />
                     </div>
                     <div>
-                      <p className="font-medium">{apt.studio_clients?.name || "Клиент"}</p>
+                      <p className="font-medium">{apt.studio_clients?.name || t("studio.appointments.client")}</p>
                       <p className="text-sm text-zinc-400">
-                        {apt.studio_services?.name || "Услуга"} • {formatCurrency(apt.final_price)}
+                        {apt.studio_services?.name || t("studio.appointments.service")} • {formatCurrency(apt.final_price)}
                       </p>
                     </div>
                   </div>
@@ -258,7 +260,7 @@ export default function StudioAppointmentsPage() {
                       <p className="text-xs text-zinc-500">{apt.studio_clients?.phone}</p>
                     </div>
                     <Badge className={getStatusColor(apt.status)}>
-                      {apt.status === "scheduled" ? "Запланировано" : apt.status === "in_progress" ? "В работе" : apt.status === "completed" ? "Выполнено" : "Отменено"}
+                      {getStatusLabel(apt.status, t)}
                     </Badge>
                     <div className="flex gap-1">
                       {apt.status === "scheduled" && (

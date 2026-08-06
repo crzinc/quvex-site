@@ -2,18 +2,19 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { Eye, Mail, Phone, Building, Calendar } from "lucide-react";
+import { Mail, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getStatusColor, formatDate, formatCurrency, getInitials } from "@/lib/utils";
+import { getStatusColor, getStatusLabel, formatDate, formatCurrency, getInitials } from "@/lib/utils";
+import { useT } from "@/i18n/I18nProvider";
 import type { Client } from "@/types";
 
 export default function DashboardRequestsPage() {
   const [requests, setRequests] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = useRef(createClient());
+  const { t } = useT();
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -29,17 +30,6 @@ export default function DashboardRequestsPage() {
     fetchRequests();
   }, []);
 
-  const updateStatus = async (id: string, status: string) => {
-    const { error } = await supabase.current
-      .from("clients")
-      .update({ status })
-      .eq("id", id);
-
-    if (!error) {
-      setRequests(requests.map((r) => r.id === id ? { ...r, status: status as Client["status"] } : r));
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -51,8 +41,8 @@ export default function DashboardRequestsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold mb-1">Заявки с сайта</h1>
-        <p className="text-sm text-zinc-400">{requests.length} заявок</p>
+        <h1 className="text-2xl font-bold mb-1">{t("admin.requests.title")}</h1>
+        <p className="text-sm text-zinc-400">{requests.length} {t("admin.requests.count")}</p>
       </div>
 
       <Card>
@@ -61,19 +51,19 @@ export default function DashboardRequestsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-800">
-                  <th className="text-left p-4 text-zinc-400 font-medium">Имя</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">Контакты</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">Источник</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">Бюджет</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">Статус</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">Дата</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">Действие</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.name")}</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.contacts")}</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.source")}</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.budget")}</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.status")}</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.date")}</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.action")}</th>
                 </tr>
               </thead>
               <tbody>
                 {requests.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-zinc-500">Нет заявок</td>
+                    <td colSpan={7} className="p-8 text-center text-zinc-500">{t("admin.requests.empty")}</td>
                   </tr>
                 ) : (
                   requests.map((request) => (
@@ -107,13 +97,13 @@ export default function DashboardRequestsPage() {
                       <td className="p-4 text-zinc-300">{request.budget ? formatCurrency(request.budget) : "—"}</td>
                       <td className="p-4">
                         <Badge className={getStatusColor(request.status)}>
-                          {request.status === "lead" ? "Лид" : request.status === "negotiation" ? "Переговоры" : request.status === "development" ? "В работе" : request.status === "completed" ? "Завершено" : "Поддержка"}
+                          {getStatusLabel(request.status, t)}
                         </Badge>
                       </td>
                       <td className="p-4 text-zinc-500">{formatDate(request.created_at)}</td>
                       <td className="p-4">
                         <Link href={`/dashboard/clients/${request.id}`} className="text-sm text-primary hover:underline">
-                          Открыть
+                          {t("admin.requests.open")}
                         </Link>
                       </td>
                     </tr>

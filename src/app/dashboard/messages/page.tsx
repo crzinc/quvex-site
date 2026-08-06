@@ -1,17 +1,16 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import Link from "next/link";
 import { MessageSquare, AlertCircle, Bug, Lightbulb, CreditCard, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { formatDate, getStatusColor, getPriorityColor, getStatusLabel } from "@/lib/utils";
 import { toast } from "sonner";
-import type { StudioMessage, Studio, MessageReply } from "@/types";
+import { useT } from "@/i18n/I18nProvider";
+import type { StudioMessage, Studio } from "@/types";
 
 export default function DashboardMessagesPage() {
   const [messages, setMessages] = useState<(StudioMessage & { studio?: Studio })[]>([]);
@@ -20,6 +19,7 @@ export default function DashboardMessagesPage() {
   const [reply, setReply] = useState("");
   const [filter, setFilter] = useState("all");
   const supabase = useRef(createClient());
+  const { t } = useT();
 
   const fetchMessages = async () => {
     const { data } = await supabase.current
@@ -51,9 +51,9 @@ export default function DashboardMessagesPage() {
     });
 
     if (error) {
-      toast.error("Ошибка при отправке ответа");
+      toast.error(t("common.reply_send_error"));
     } else {
-      toast.success("Ответ отправлен");
+      toast.success(t("common.reply_sent"));
       setReply("");
       fetchMessages();
     }
@@ -99,8 +99,8 @@ export default function DashboardMessagesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold mb-1">Сообщения от студий</h1>
-        <p className="text-sm text-zinc-400">{unreadCount} непрочитанных</p>
+        <h1 className="text-2xl font-bold mb-1">{t("admin.messages.title")}</h1>
+        <p className="text-sm text-zinc-400">{unreadCount} {t("admin.messages.unread")}</p>
       </div>
 
       <div className="flex gap-2 flex-wrap">
@@ -111,7 +111,7 @@ export default function DashboardMessagesPage() {
             size="sm"
             onClick={() => setFilter(f)}
           >
-            {f === "all" ? "Все" : f === "new" ? "Новые" : f === "in_progress" ? "В работе" : f === "resolved" ? "Решено" : "Закрыто"}
+            {f === "all" ? t("admin.messages.all") : getStatusLabel(f, t)}
           </Button>
         ))}
       </div>
@@ -121,7 +121,7 @@ export default function DashboardMessagesPage() {
           {filteredMessages.length === 0 ? (
             <div className="text-center py-12">
               <MessageSquare className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
-              <p className="text-zinc-500">Нет сообщений</p>
+              <p className="text-zinc-500">{t("admin.messages.empty")}</p>
             </div>
           ) : (
             filteredMessages.map((msg) => (
@@ -136,10 +136,10 @@ export default function DashboardMessagesPage() {
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
                       {getTypeIcon(msg.type)}
-                      <span className="font-medium text-sm">{msg.studio?.name || "Студия"}</span>
+                      <span className="font-medium text-sm">{msg.studio?.name || t("admin.messages.studio")}</span>
                     </div>
                     <Badge className={getPriorityColor(msg.priority)}>
-                      {msg.priority === "low" ? "Низкий" : msg.priority === "normal" ? "Обычный" : msg.priority === "high" ? "Высокий" : "Срочный"}
+                      {getStatusLabel(msg.priority, t)}
                     </Badge>
                   </div>
                   <p className="text-sm font-medium mb-1">{msg.subject}</p>
@@ -147,7 +147,7 @@ export default function DashboardMessagesPage() {
                   <div className="flex items-center justify-between mt-2">
                     <p className="text-xs text-zinc-600">{formatDate(msg.created_at)}</p>
                     <Badge className={getStatusColor(msg.status)}>
-                      {msg.status === "new" ? "Новое" : msg.status === "in_progress" ? "В работе" : msg.status === "resolved" ? "Решено" : "Закрыто"}
+                      {getStatusLabel(msg.status, t)}
                     </Badge>
                   </div>
                 </CardContent>
@@ -170,12 +170,12 @@ export default function DashboardMessagesPage() {
                   <div className="flex gap-2">
                     {selectedMessage.status === "new" && (
                       <Button size="sm" onClick={() => updateStatus(selectedMessage.id, "in_progress")}>
-                        В работу
+                        {t("admin.messages.to_work")}
                       </Button>
                     )}
                     {selectedMessage.status === "in_progress" && (
                       <Button size="sm" onClick={() => updateStatus(selectedMessage.id, "resolved")}>
-                        Решено
+                        {t("admin.messages.resolved_btn")}
                       </Button>
                     )}
                   </div>
@@ -186,7 +186,7 @@ export default function DashboardMessagesPage() {
                 </div>
 
                 <div className="space-y-4 mb-6">
-                  <h3 className="font-medium text-sm text-zinc-400">Ответы ({selectedMessage.replies?.length || 0})</h3>
+                  <h3 className="font-medium text-sm text-zinc-400">{t("admin.messages.replies")} ({selectedMessage.replies?.length || 0})</h3>
                   {selectedMessage.replies?.map((reply) => (
                     <div
                       key={reply.id}
@@ -204,7 +204,7 @@ export default function DashboardMessagesPage() {
 
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Ваш ответ..."
+                    placeholder={t("admin.messages.reply_placeholder")}
                     value={reply}
                     onChange={(e) => setReply(e.target.value)}
                     className="flex-1"
@@ -219,7 +219,7 @@ export default function DashboardMessagesPage() {
             <Card>
               <CardContent className="p-12 text-center">
                 <MessageSquare className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
-                <p className="text-zinc-500">Выберите сообщение для просмотра</p>
+                <p className="text-zinc-500">{t("admin.messages.select")}</p>
               </CardContent>
             </Card>
           )}

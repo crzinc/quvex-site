@@ -1,11 +1,13 @@
 "use client";
 
-import { Bell, Search, Globe } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
+import { useT } from "@/i18n/I18nProvider";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 interface StudioHeaderProps {
   slug: string;
@@ -15,6 +17,7 @@ export default function StudioHeader({ slug }: StudioHeaderProps) {
   const [notifications, setNotifications] = useState<{ id: string; subject: string; message: string; created_at: string }[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const supabase = useRef(createClient());
+  const { t } = useT();
 
   useEffect(() => {
     supabase.current
@@ -41,7 +44,7 @@ export default function StudioHeader({ slug }: StudioHeaderProps) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
           <input
             type="text"
-            placeholder="Поиск клиентов, услуг..."
+            placeholder={t("studio.header.search")}
             className="w-96 pl-10 pr-4 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-primary/50 transition-colors"
           />
         </div>
@@ -71,11 +74,11 @@ export default function StudioHeader({ slug }: StudioHeaderProps) {
                 className="absolute right-0 top-full mt-2 w-80 bg-zinc-900/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl shadow-black/50 overflow-hidden"
               >
                 <div className="p-4 border-b border-zinc-800">
-                  <h3 className="font-medium text-sm">Уведомления</h3>
+                  <h3 className="font-medium text-sm">{t("studio.header.notif_title")}</h3>
                 </div>
                 <div className="max-h-64 overflow-y-auto">
                   {notifications.length === 0 ? (
-                    <div className="p-4 text-sm text-zinc-500 text-center">Нет уведомлений</div>
+                    <div className="p-4 text-sm text-zinc-500 text-center">{t("studio.header.notif_empty")}</div>
                   ) : (
                     notifications.map((n) => (
                       <div key={n.id} className="p-4 border-b border-zinc-800/50 hover:bg-zinc-800/50 transition-colors">
@@ -91,10 +94,7 @@ export default function StudioHeader({ slug }: StudioHeaderProps) {
           </AnimatePresence>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-zinc-400">
-          <Globe className="w-4 h-4" />
-          <span>RU</span>
-        </div>
+        <LanguageSwitcher />
       </div>
     </header>
   );

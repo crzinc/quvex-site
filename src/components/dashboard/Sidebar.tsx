@@ -7,7 +7,6 @@ import {
   Users,
   Settings,
   LogOut,
-  Plus,
   Building,
   MessageSquare,
   DollarSign,
@@ -22,10 +21,10 @@ import { useT } from "@/i18n/I18nProvider";
 const links = [
   { href: "/dashboard", label: "sidebar.dashboard", icon: LayoutDashboard },
   { href: "/dashboard/clients", label: "sidebar.clients", icon: Users },
-  { href: "/dashboard/requests", label: "Заявки", icon: FileText },
-  { href: "/dashboard/studios", label: "Студии", icon: Building },
-  { href: "/dashboard/payments", label: "Платежи", icon: DollarSign },
-  { href: "/dashboard/messages", label: "Сообщения", icon: MessageSquare },
+  { href: "/dashboard/requests", label: "sidebar.requests", icon: FileText },
+  { href: "/dashboard/studios", label: "sidebar.studios", icon: Building },
+  { href: "/dashboard/payments", label: "sidebar.payments", icon: DollarSign },
+  { href: "/dashboard/messages", label: "sidebar.messages", icon: MessageSquare },
   { href: "/dashboard/settings", label: "sidebar.settings", icon: Settings },
 ];
 

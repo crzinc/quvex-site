@@ -62,7 +62,32 @@ export function getStatusColor(status: string) {
   }
 }
 
-export function getStatusLabel(status: string) {
+export function getStatusLabel(status: string, t?: (key: string) => string) {
+  const statusKeys: Record<string, string> = {
+    lead: "admin.requests.lead",
+    negotiation: "admin.requests.negotiation",
+    development: "admin.requests.development",
+    completed: "appointment.completed",
+    support: "admin.requests.support",
+    new: "status.new",
+    regular: "status.regular",
+    vip: "status.vip",
+    inactive: "status.inactive",
+    scheduled: "appointment.scheduled",
+    in_progress: "appointment.in_progress",
+    cancelled: "appointment.cancelled",
+    no_show: "appointment.no_show",
+    pending: "payment_status.pending",
+    paid: "payment_status.paid",
+    overdue: "payment_status.overdue",
+    resolved: "message_status.resolved",
+    closed: "message_status.closed",
+    low: "priority.low",
+    normal: "priority.normal",
+    high: "priority.high",
+    urgent: "priority.urgent",
+  };
+  if (t && statusKeys[status]) return t(statusKeys[status]);
   switch (status) {
     case "lead": return "Лид";
     case "negotiation": return "Переговоры";
@@ -90,7 +115,8 @@ export function getStatusLabel(status: string) {
   }
 }
 
-export function getPaymentMethodLabel(method: string) {
+export function getPaymentMethodLabel(method: string, t?: (key: string) => string) {
+  if (t) return t(`payment_method.${method}`);
   switch (method) {
     case "cash": return "Наличные";
     case "card": return "Карта";
@@ -110,7 +136,19 @@ export function getPriorityColor(priority: string) {
   }
 }
 
-export function getCategoryLabel(category: string) {
+export function getCategoryLabel(category: string, t?: (key: string) => string) {
+  const categoryKeys: Record<string, string> = {
+    detailing: "service_category.detailing",
+    wash: "service_category.wash",
+    protection: "service_category.protection",
+    interior: "service_category.interior",
+    exterior: "service_category.exterior",
+    service: "category.service",
+    product: "category.product",
+    subscription: "category.subscription",
+    other: "category.other",
+  };
+  if (t && categoryKeys[category]) return t(categoryKeys[category]);
   switch (category) {
     case "detailing": return "Детейлинг";
     case "wash": return "Мойка";

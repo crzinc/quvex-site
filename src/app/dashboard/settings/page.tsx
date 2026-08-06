@@ -50,7 +50,7 @@ export default function SettingsPage() {
     });
 
     if (userError) {
-      toast.error("Ошибка при создании пользователя: " + userError.message);
+      toast.error(t("admin.settings.user_create_error") + userError.message);
       setStudioLoading(false);
       return;
     }
@@ -65,7 +65,7 @@ export default function SettingsPage() {
     }).select().single();
 
     if (studioError) {
-      toast.error("Ошибка при создании студии: " + studioError.message);
+      toast.error(t("admin.settings.studio_create_error") + studioError.message);
       setStudioLoading(false);
       return;
     }
@@ -77,12 +77,12 @@ export default function SettingsPage() {
     });
 
     if (linkError) {
-      toast.error("Ошибка при привязке пользователя: " + linkError.message);
+      toast.error(t("admin.settings.user_link_error") + linkError.message);
       setStudioLoading(false);
       return;
     }
 
-    toast.success("Студия создана! Пароль отправлен на " + studioForm.owner_email);
+    toast.success(t("admin.settings.studio_created") + studioForm.owner_email);
     setStudioForm({ name: "", slug: "", owner_email: "", owner_phone: "", address: "", description: "" });
     setStudioLoading(false);
   };
@@ -104,21 +104,21 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building className="w-5 h-5" />
-            Создать студию
+            {t("admin.settings.create_studio")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCreateStudio} className="space-y-4">
-            <Input label="Название студии *" placeholder="Мой Автодетейлинг" value={studioForm.name} onChange={(e) => setStudioForm({ ...studioForm, name: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-") })} required />
-            <Input label="Slug (URL)" placeholder="my-auto-detailing" value={studioForm.slug} onChange={(e) => setStudioForm({ ...studioForm, slug: e.target.value })} required />
-            <Input label="Email владельца *" type="email" placeholder="owner@studio.com" value={studioForm.owner_email} onChange={(e) => setStudioForm({ ...studioForm, owner_email: e.target.value })} required />
+            <Input label={`${t("admin.settings.studio_name")} *`} placeholder={t("admin.settings.studio_name_placeholder")} value={studioForm.name} onChange={(e) => setStudioForm({ ...studioForm, name: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-") })} required />
+            <Input label={t("admin.settings.slug")} placeholder={t("admin.settings.slug_placeholder")} value={studioForm.slug} onChange={(e) => setStudioForm({ ...studioForm, slug: e.target.value })} required />
+            <Input label={`${t("admin.settings.owner_email")} *`} type="email" placeholder={t("admin.settings.owner_email_placeholder")} value={studioForm.owner_email} onChange={(e) => setStudioForm({ ...studioForm, owner_email: e.target.value })} required />
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Телефон" type="tel" placeholder="+7 (999) 123-45-67" value={studioForm.owner_phone} onChange={(e) => setStudioForm({ ...studioForm, owner_phone: e.target.value })} />
-              <Input label="Адрес" placeholder="ул. Примерная, 123" value={studioForm.address} onChange={(e) => setStudioForm({ ...studioForm, address: e.target.value })} />
+              <Input label={t("admin.settings.phone")} type="tel" placeholder="+7 (999) 123-45-67" value={studioForm.owner_phone} onChange={(e) => setStudioForm({ ...studioForm, owner_phone: e.target.value })} />
+              <Input label={t("admin.settings.address")} placeholder={t("admin.settings.address_placeholder")} value={studioForm.address} onChange={(e) => setStudioForm({ ...studioForm, address: e.target.value })} />
             </div>
-            <Textarea label="Описание" placeholder="Описание студии..." value={studioForm.description} onChange={(e) => setStudioForm({ ...studioForm, description: e.target.value })} rows={3} />
+            <Textarea label={t("admin.settings.description")} placeholder={t("admin.settings.description_placeholder")} value={studioForm.description} onChange={(e) => setStudioForm({ ...studioForm, description: e.target.value })} rows={3} />
             <Button type="submit" loading={studioLoading}>
-              <Plus className="w-4 h-4" /> Создать студию
+              <Plus className="w-4 h-4" /> {t("admin.settings.create")}
             </Button>
           </form>
         </CardContent>

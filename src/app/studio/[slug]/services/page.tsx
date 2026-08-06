@@ -12,10 +12,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { formatCurrency, getCategoryLabel } from "@/lib/utils";
 import { toast } from "sonner";
+import { useT } from "@/i18n/I18nProvider";
 import type { StudioService } from "@/types";
 
 export default function StudioServicesPage() {
   const params = useParams<{ slug: string }>();
+  const { t } = useT();
   const [services, setServices] = useState<StudioService[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -78,9 +80,9 @@ export default function StudioServicesPage() {
         .eq("id", editingId);
 
       if (error) {
-        toast.error("Ошибка при обновлении услуги");
+        toast.error(t("common.service_update_error"));
       } else {
-        toast.success("Услуга обновлена");
+        toast.success(t("common.service_updated"));
         resetForm();
         fetchServices();
       }
@@ -88,9 +90,9 @@ export default function StudioServicesPage() {
       const { error } = await supabase.current.from("studio_services").insert(serviceData);
 
       if (error) {
-        toast.error("Ошибка при создании услуги");
+        toast.error(t("common.service_create_error"));
       } else {
-        toast.success("Услуга создана");
+        toast.success(t("common.service_created"));
         resetForm();
         fetchServices();
       }
@@ -98,14 +100,14 @@ export default function StudioServicesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Вы уверены, что хотите удалить услугу?")) return;
+    if (!confirm(t("common.confirm_delete_service"))) return;
 
     const { error } = await supabase.current.from("studio_services").delete().eq("id", id);
 
     if (error) {
-      toast.error("Ошибка при удалении");
+      toast.error(t("common.delete_error"));
     } else {
-      toast.success("Услуга удалена");
+      toast.success(t("common.service_deleted"));
       fetchServices();
     }
   };
@@ -140,64 +142,64 @@ export default function StudioServicesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold mb-1">Услуги</h1>
-          <p className="text-sm text-zinc-400">{services.length} услуг</p>
+          <h1 className="text-2xl font-bold mb-1">{t("studio.services.title")}</h1>
+          <p className="text-sm text-zinc-400">{services.length} {t("studio.services.count")}</p>
         </div>
         <Button onClick={() => { resetForm(); setShowForm(true); }}>
-          <Plus className="w-4 h-4" /> Добавить услугу
+          <Plus className="w-4 h-4" /> {t("studio.services.add")}
         </Button>
       </div>
 
       {showForm && (
         <Card>
           <CardContent className="p-6">
-            <h3 className="font-medium mb-4">{editingId ? "Редактировать услугу" : "Новая услуга"}</h3>
+            <h3 className="font-medium mb-4">{editingId ? t("studio.services.edit_title") : t("studio.services.new_title")}</h3>
             <div className="space-y-4">
               <Input
-                label="Название *"
+                label={`${t("studio.services.name")} *`}
                 placeholder="Полировка кузова"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
               <Textarea
-                label="Описание"
-                placeholder="Описание услуги..."
+                label={t("studio.services.description")}
+                placeholder={t("studio.services.description_placeholder")}
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 rows={3}
               />
               <div className="grid grid-cols-3 gap-4">
                 <Input
-                  label="Цена (₽) *"
+                  label={`${t("studio.services.price")} *`}
                   type="number"
                   placeholder="5000"
                   value={form.price}
                   onChange={(e) => setForm({ ...form, price: e.target.value })}
                 />
                 <Input
-                  label="Длительность (мин)"
+                  label={t("studio.services.duration")}
                   type="number"
                   placeholder="60"
                   value={form.duration_minutes}
                   onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })}
                 />
                 <Select
-                  label="Категория"
+                  label={t("studio.services.category")}
                   value={form.category}
                   onChange={(value) => setForm({ ...form, category: value })}
                   options={[
-                    { value: "detailing", label: "Детейлинг" },
-                    { value: "wash", label: "Мойка" },
-                    { value: "protection", label: "Защита" },
-                    { value: "interior", label: "Интерьер" },
-                    { value: "exterior", label: "Экстерьер" },
-                    { value: "other", label: "Другое" },
+                    { value: "detailing", label: t("service_category.detailing") },
+                    { value: "wash", label: t("service_category.wash") },
+                    { value: "protection", label: t("service_category.protection") },
+                    { value: "interior", label: t("service_category.interior") },
+                    { value: "exterior", label: t("service_category.exterior") },
+                    { value: "other", label: t("service_category.other") },
                   ]}
                 />
               </div>
               <div className="flex gap-2">
-                <Button onClick={handleSave}>{editingId ? "Сохранить" : "Создать"}</Button>
-                <Button variant="outline" onClick={resetForm}>Отмена</Button>
+                <Button onClick={handleSave}>{editingId ? t("studio.services.save") : t("studio.services.create")}</Button>
+                <Button variant="outline" onClick={resetForm}>{t("studio.services.cancel")}</Button>
               </div>
             </div>
           </CardContent>
@@ -215,7 +217,7 @@ export default function StudioServicesPage() {
                   </div>
                   <div>
                     <h3 className="font-medium">{service.name}</h3>
-                    <Badge className="text-xs">{getCategoryLabel(service.category)}</Badge>
+                    <Badge className="text-xs">{getCategoryLabel(service.category, t)}</Badge>
                   </div>
                 </div>
                 <div className="flex gap-1">
@@ -231,7 +233,7 @@ export default function StudioServicesPage() {
                 <p className="text-sm text-zinc-400 mb-4 line-clamp-2">{service.description}</p>
               )}
               <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-500">{service.duration_minutes} мин</span>
+                <span className="text-zinc-500">{service.duration_minutes} {t("studio.services.min")}</span>
                 <span className="text-lg font-bold text-primary">{formatCurrency(service.price)}</span>
               </div>
             </CardContent>
@@ -242,8 +244,8 @@ export default function StudioServicesPage() {
       {services.length === 0 && !showForm && (
         <div className="text-center py-12">
           <Scissors className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
-          <p className="text-zinc-500">Нет услуг</p>
-          <p className="text-sm text-zinc-600 mt-1">Добавьте первую услугу для вашего автодетейлинга</p>
+          <p className="text-zinc-500">{t("studio.services.empty")}</p>
+          <p className="text-sm text-zinc-600 mt-1">{t("studio.services.empty_desc")}</p>
         </div>
       )}
     </div>

@@ -8,11 +8,13 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getStatusColor, formatCurrency, getInitials } from "@/lib/utils";
+import { getStatusColor, getStatusLabel, formatCurrency, getInitials } from "@/lib/utils";
+import { useT } from "@/i18n/I18nProvider";
 import type { StudioClient } from "@/types";
 
 export default function StudioClientsPage() {
   const params = useParams<{ slug: string }>();
+  const { t } = useT();
   const [clients, setClients] = useState<StudioClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -62,12 +64,12 @@ export default function StudioClientsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold mb-1">Клиенты</h1>
-          <p className="text-sm text-zinc-400">{clients.length} клиентов</p>
+          <h1 className="text-2xl font-bold mb-1">{t("studio.clients.title")}</h1>
+          <p className="text-sm text-zinc-400">{clients.length} {t("studio.clients.subtitle")}</p>
         </div>
         <Link href={`/studio/${params.slug}/clients/new`}>
           <Button>
-            <Plus className="w-4 h-4" /> Новый клиент
+            <Plus className="w-4 h-4" /> {t("studio.clients.new")}
           </Button>
         </Link>
       </div>
@@ -76,7 +78,7 @@ export default function StudioClientsPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
         <input
           type="text"
-          placeholder="Поиск по имени, телефону, авто, номеру..."
+          placeholder={t("studio.clients.search")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-primary/50 transition-colors"
@@ -89,20 +91,20 @@ export default function StudioClientsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-800">
-                  <th className="text-left p-4 text-zinc-400 font-medium">Имя</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">Авто</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">Телефон</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">Статус</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">Визитов</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">Потрачено</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">Действие</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.clients.name")}</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.clients.car")}</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.clients.phone")}</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.clients.status")}</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.client.visits")}</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.clients.spent")}</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.clients.action")}</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredClients.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="p-8 text-center text-zinc-500">
-                      {search ? "Нет результатов поиска" : "Нет клиентов"}
+                      {search ? t("studio.clients.no_results") : t("studio.clients.empty")}
                     </td>
                   </tr>
                 ) : (
@@ -139,14 +141,14 @@ export default function StudioClientsPage() {
                       </td>
                       <td className="p-4">
                         <Badge className={getStatusColor(client.status)}>
-                          {client.status === "new" ? "Новый" : client.status === "regular" ? "Постоянный" : client.status === "vip" ? "VIP" : "Неактивный"}
+                          {getStatusLabel(client.status, t)}
                         </Badge>
                       </td>
                       <td className="p-4 text-zinc-300">{client.total_visits}</td>
                       <td className="p-4 text-zinc-300">{formatCurrency(client.total_spent)}</td>
                       <td className="p-4">
                         <Link href={`/studio/${params.slug}/clients/${client.id}`} className="text-sm text-primary hover:underline">
-                          Открыть
+                          {t("studio.clients.open")}
                         </Link>
                       </td>
                     </tr>

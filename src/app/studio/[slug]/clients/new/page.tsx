@@ -10,11 +10,13 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useT } from "@/i18n/I18nProvider";
 
 export default function StudioNewClientPage() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
   const supabase = useRef(createClient());
+  const { t } = useT();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -40,7 +42,7 @@ export default function StudioNewClientPage() {
       .single();
 
     if (!studio) {
-      toast.error("Студия не найдена");
+      toast.error(t("studio.client.studio_not_found"));
       setLoading(false);
       return;
     }
@@ -61,9 +63,9 @@ export default function StudioNewClientPage() {
     });
 
     if (error) {
-      toast.error("Ошибка при создании клиента");
+      toast.error(t("studio.client.create_error"));
     } else {
-      toast.success("Клиент создан");
+      toast.success(t("common.saved"));
       router.push(`/studio/${params.slug}/clients`);
     }
 
@@ -77,19 +79,19 @@ export default function StudioNewClientPage() {
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">Новый клиент</h1>
-          <p className="text-sm text-zinc-400">Добавьте информацию о клиенте и его автомобиле</p>
+          <h1 className="text-2xl font-bold">{t("studio.client.new_title")}</h1>
+          <p className="text-sm text-zinc-400">{t("studio.client.new_subtitle")}</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Контактная информация</CardTitle>
+            <CardTitle>{t("studio.client.contact")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Input
-              label="Имя *"
+              label={t("studio.client.name") + " *"}
               placeholder="Иван Иванов"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -97,7 +99,7 @@ export default function StudioNewClientPage() {
             />
             <div className="grid grid-cols-2 gap-4">
               <Input
-                label="Телефон"
+                label={t("studio.client.phone")}
                 type="tel"
                 placeholder="+7 (999) 123-45-67"
                 value={form.phone}
@@ -116,18 +118,18 @@ export default function StudioNewClientPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Автомобиль</CardTitle>
+            <CardTitle>{t("studio.client.car_title")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <Input
-                label="Марка"
+                label={t("studio.client.make")}
                 placeholder="Toyota"
                 value={form.car_make}
                 onChange={(e) => setForm({ ...form, car_make: e.target.value })}
               />
               <Input
-                label="Модель"
+                label={t("studio.client.model")}
                 placeholder="Camry"
                 value={form.car_model}
                 onChange={(e) => setForm({ ...form, car_model: e.target.value })}
@@ -135,20 +137,20 @@ export default function StudioNewClientPage() {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <Input
-                label="Год"
+                label={t("studio.client.year")}
                 type="number"
                 placeholder="2020"
                 value={form.car_year}
                 onChange={(e) => setForm({ ...form, car_year: e.target.value })}
               />
               <Input
-                label="Цвет"
+                label={t("studio.client.color")}
                 placeholder="Белый"
                 value={form.car_color}
                 onChange={(e) => setForm({ ...form, car_color: e.target.value })}
               />
               <Input
-                label="Гос. номер"
+                label={t("studio.client.plate")}
                 placeholder="А123БВ777"
                 value={form.license_plate}
                 onChange={(e) => setForm({ ...form, license_plate: e.target.value })}
@@ -165,11 +167,11 @@ export default function StudioNewClientPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Заметки</CardTitle>
+            <CardTitle>{t("studio.client.notes_title")}</CardTitle>
           </CardHeader>
           <CardContent>
             <Textarea
-              placeholder="Дополнительная информация о клиенте или его предпочтениях..."
+              placeholder={t("studio.client.notes_placeholder")}
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               rows={4}
@@ -179,9 +181,9 @@ export default function StudioNewClientPage() {
 
         <div className="flex gap-4">
           <Link href={`/studio/${params.slug}/clients`}>
-            <Button type="button" variant="outline">Отмена</Button>
+            <Button type="button" variant="outline">{t("studio.client.cancel")}</Button>
           </Link>
-          <Button type="submit" loading={loading}>Создать клиента</Button>
+          <Button type="submit" loading={loading}>{t("studio.client.create")}</Button>
         </div>
       </form>
     </div>

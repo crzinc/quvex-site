@@ -9,19 +9,19 @@ const projectKeys = [
     icon: Building2,
     title: "portfolio.project1_title",
     desc: "portfolio.project1_desc",
-    tags: ["Бронирование", "Напоминания", "+45% повторных визитов"],
+    tags: ["portfolio.project1_tag1", "portfolio.project1_tag2", "portfolio.project1_tag3"],
   },
   {
     icon: Monitor,
     title: "portfolio.project2_title",
     desc: "portfolio.project2_desc",
-    tags: ["3 студии", "Единый график", "Единая база"],
+    tags: ["portfolio.project2_tag1", "portfolio.project2_tag2", "portfolio.project2_tag3"],
   },
   {
     icon: GraduationCap,
     title: "portfolio.project3_title",
     desc: "portfolio.project3_desc",
-    tags: ["Онлайн-запись", "30 секунд", "-94% время записи"],
+    tags: ["portfolio.project3_tag1", "portfolio.project3_tag2", "portfolio.project3_tag3"],
   },
 ];
 
@@ -63,7 +63,7 @@ export default function Portfolio() {
                     key={tag}
                     className="text-xs px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-400"
                   >
-                    {tag}
+                    {t(tag)}
                   </span>
                 ))}
               </div>

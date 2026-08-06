@@ -10,12 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
-import { formatDate, getStatusColor, getPriorityColor } from "@/lib/utils";
+import { formatDate, getStatusColor, getPriorityColor, getStatusLabel } from "@/lib/utils";
 import { toast } from "sonner";
+import { useT } from "@/i18n/I18nProvider";
 import type { StudioMessage } from "@/types";
 
 export default function StudioMessagesPage() {
   const params = useParams<{ slug: string }>();
+  const { t } = useT();
   const [messages, setMessages] = useState<StudioMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -77,9 +79,9 @@ export default function StudioMessagesPage() {
     });
 
     if (error) {
-      toast.error("Ошибка при отправке сообщения");
+      toast.error(t("common.message_send_error"));
     } else {
-      toast.success("Сообщение отправлено");
+      toast.success(t("common.message_sent"));
       setShowForm(false);
       setForm({ subject: "", message: "", type: "support", priority: "normal" });
       fetchMessages();
@@ -96,9 +98,9 @@ export default function StudioMessagesPage() {
     });
 
     if (error) {
-      toast.error("Ошибка при отправке ответа");
+      toast.error(t("common.reply_send_error"));
     } else {
-      toast.success("Ответ отправлен");
+      toast.success(t("common.reply_sent"));
       setReply("");
       fetchMessages();
     }
@@ -125,60 +127,60 @@ export default function StudioMessagesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold mb-1">Сообщения</h1>
-          <p className="text-sm text-zinc-400">Связь с командой Quvex</p>
+          <h1 className="text-2xl font-bold mb-1">{t("studio.messages.title")}</h1>
+          <p className="text-sm text-zinc-400">{t("studio.messages.subtitle")}</p>
         </div>
         <Button onClick={() => setShowForm(!showForm)}>
-          <MessageSquare className="w-4 h-4" /> Написать
+          <MessageSquare className="w-4 h-4" /> {t("studio.messages.write")}
         </Button>
       </div>
 
       {showForm && (
         <Card>
           <CardContent className="p-6">
-            <h3 className="font-medium mb-4">Новое сообщение</h3>
+            <h3 className="font-medium mb-4">{t("studio.messages.new_title")}</h3>
             <div className="space-y-4">
               <Input
-                label="Тема *"
-                placeholder="Тема сообщения"
+                label={`${t("studio.messages.subject")} *`}
+                placeholder={t("studio.messages.subject_placeholder")}
                 value={form.subject}
                 onChange={(e) => setForm({ ...form, subject: e.target.value })}
               />
               <div className="grid grid-cols-2 gap-4">
                 <Select
-                  label="Тип"
+                  label={t("studio.messages.type")}
                   value={form.type}
                   onChange={(value) => setForm({ ...form, type: value })}
                   options={[
-                    { value: "support", label: "Поддержка" },
-                    { value: "bug", label: "Ошибка" },
-                    { value: "feature", label: "Предложение" },
-                    { value: "billing", label: "Оплата" },
-                    { value: "other", label: "Другое" },
+                    { value: "support", label: t("message_type.support") },
+                    { value: "bug", label: t("message_type.bug") },
+                    { value: "feature", label: t("message_type.feature") },
+                    { value: "billing", label: t("message_type.billing") },
+                    { value: "other", label: t("message_type.other") },
                   ]}
                 />
                 <Select
-                  label="Приоритет"
+                  label={t("studio.messages.priority")}
                   value={form.priority}
                   onChange={(value) => setForm({ ...form, priority: value })}
                   options={[
-                    { value: "low", label: "Низкий" },
-                    { value: "normal", label: "Обычный" },
-                    { value: "high", label: "Высокий" },
-                    { value: "urgent", label: "Срочный" },
+                    { value: "low", label: t("priority.low") },
+                    { value: "normal", label: t("priority.normal") },
+                    { value: "high", label: t("priority.high") },
+                    { value: "urgent", label: t("priority.urgent") },
                   ]}
                 />
               </div>
               <Textarea
-                label="Сообщение *"
-                placeholder="Опишите вашу проблему или вопрос..."
+                label={`${t("studio.messages.message")} *`}
+                placeholder={t("studio.messages.message_placeholder")}
                 value={form.message}
                 onChange={(e) => setForm({ ...form, message: e.target.value })}
                 rows={5}
               />
               <div className="flex gap-2">
-                <Button onClick={handleSend}>Отправить</Button>
-                <Button variant="outline" onClick={() => setShowForm(false)}>Отмена</Button>
+                <Button onClick={handleSend}>{t("studio.messages.send")}</Button>
+                <Button variant="outline" onClick={() => setShowForm(false)}>{t("studio.messages.cancel")}</Button>
               </div>
             </div>
           </CardContent>
@@ -190,7 +192,7 @@ export default function StudioMessagesPage() {
           {messages.length === 0 ? (
             <div className="text-center py-12">
               <MessageSquare className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
-              <p className="text-zinc-500">Нет сообщений</p>
+              <p className="text-zinc-500">{t("studio.messages.empty")}</p>
             </div>
           ) : (
             messages.map((msg) => (
@@ -208,7 +210,7 @@ export default function StudioMessagesPage() {
                       <span className="font-medium text-sm">{msg.subject}</span>
                     </div>
                     <Badge className={getStatusColor(msg.status)}>
-                      {msg.status === "new" ? "Новое" : msg.status === "in_progress" ? "В работе" : msg.status === "resolved" ? "Решено" : "Закрыто"}
+                      {getStatusLabel(msg.status, t)}
                     </Badge>
                   </div>
                   <p className="text-xs text-zinc-500 line-clamp-2">{msg.message}</p>
@@ -227,11 +229,11 @@ export default function StudioMessagesPage() {
                   <div>
                     <h2 className="text-xl font-bold">{selectedMessage.subject}</h2>
                     <p className="text-sm text-zinc-400">
-                      {formatDate(selectedMessage.created_at)} • {selectedMessage.type}
+                      {formatDate(selectedMessage.created_at)} • {t(`message_type.${selectedMessage.type}`)}
                     </p>
                   </div>
                   <Badge className={getPriorityColor(selectedMessage.priority)}>
-                    {selectedMessage.priority === "low" ? "Низкий" : selectedMessage.priority === "normal" ? "Обычный" : selectedMessage.priority === "high" ? "Высокий" : "Срочный"}
+                    {getStatusLabel(selectedMessage.priority, t)}
                   </Badge>
                 </div>
 
@@ -240,7 +242,7 @@ export default function StudioMessagesPage() {
                 </div>
 
                 <div className="space-y-4 mb-6">
-                  <h3 className="font-medium text-sm text-zinc-400">Ответы ({selectedMessage.replies?.length || 0})</h3>
+                  <h3 className="font-medium text-sm text-zinc-400">{t("studio.messages.replies")} ({selectedMessage.replies?.length || 0})</h3>
                   {selectedMessage.replies?.map((reply) => (
                     <div
                       key={reply.id}
@@ -250,7 +252,7 @@ export default function StudioMessagesPage() {
                     >
                       <p className="text-sm text-zinc-300 whitespace-pre-wrap">{reply.content}</p>
                       <p className="text-xs text-zinc-500 mt-2">
-                        {reply.is_admin ? "Quvex" : "Вы"} • {formatDate(reply.created_at)}
+                        {reply.is_admin ? "Quvex" : t("studio.messages.you")} • {formatDate(reply.created_at)}
                       </p>
                     </div>
                   ))}
@@ -258,7 +260,7 @@ export default function StudioMessagesPage() {
 
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Ваш ответ..."
+                    placeholder={t("studio.messages.reply_placeholder")}
                     value={reply}
                     onChange={(e) => setReply(e.target.value)}
                     className="flex-1"
@@ -273,7 +275,7 @@ export default function StudioMessagesPage() {
             <Card>
               <CardContent className="p-12 text-center">
                 <MessageSquare className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
-                <p className="text-zinc-500">Выберите сообщение для просмотра</p>
+                <p className="text-zinc-500">{t("studio.messages.select")}</p>
               </CardContent>
             </Card>
           )}

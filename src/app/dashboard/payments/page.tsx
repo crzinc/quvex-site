@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getStatusColor, formatDate, formatCurrency, getStatusLabel } from "@/lib/utils";
+import { useT } from "@/i18n/I18nProvider";
 import type { Payment, Studio } from "@/types";
 
 export default function DashboardPaymentsPage() {
@@ -14,6 +15,7 @@ export default function DashboardPaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const supabase = useRef(createClient());
+  const { t } = useT();
 
   const fetchPayments = async () => {
     const { data } = await supabase.current
@@ -58,8 +60,8 @@ export default function DashboardPaymentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold mb-1">Платежи</h1>
-        <p className="text-sm text-zinc-400">Управление платежами клиентов</p>
+        <h1 className="text-2xl font-bold mb-1">{t("admin.payments.title")}</h1>
+        <p className="text-sm text-zinc-400">{t("admin.payments.subtitle")}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -67,7 +69,7 @@ export default function DashboardPaymentsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-zinc-400">Общая выручка</p>
+                <p className="text-sm text-zinc-400">{t("admin.payments.total_revenue")}</p>
                 <p className="text-2xl font-bold text-emerald-400">{formatCurrency(totalRevenue)}</p>
               </div>
               <DollarSign className="w-8 h-8 text-emerald-400" />
@@ -78,7 +80,7 @@ export default function DashboardPaymentsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-zinc-400">Ожидает оплаты</p>
+                <p className="text-sm text-zinc-400">{t("admin.payments.pending")}</p>
                 <p className="text-2xl font-bold text-yellow-400">{formatCurrency(pendingAmount)}</p>
               </div>
               <Clock className="w-8 h-8 text-yellow-400" />
@@ -89,7 +91,7 @@ export default function DashboardPaymentsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-zinc-400">Всего платежей</p>
+                <p className="text-sm text-zinc-400">{t("admin.payments.total")}</p>
                 <p className="text-2xl font-bold">{payments.length}</p>
               </div>
               <DollarSign className="w-8 h-8 text-primary" />
@@ -106,7 +108,7 @@ export default function DashboardPaymentsPage() {
             size="sm"
             onClick={() => setFilter(f)}
           >
-            {f === "all" ? "Все" : getStatusLabel(f)}
+            {f === "all" ? t("admin.payments.all") : getStatusLabel(f, t)}
           </Button>
         ))}
       </div>
@@ -117,18 +119,18 @@ export default function DashboardPaymentsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-800">
-                  <th className="text-left p-4 text-zinc-400 font-medium">Студия</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">Дата</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">Сумма</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">Период</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">Статус</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">Действие</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.payments.studio")}</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.payments.date")}</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.payments.amount")}</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.payments.period")}</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.payments.status")}</th>
+                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.payments.action")}</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPayments.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-zinc-500">Нет платежей</td>
+                    <td colSpan={6} className="p-8 text-center text-zinc-500">{t("admin.payments.empty")}</td>
                   </tr>
                 ) : (
                   filteredPayments.map((payment) => (
@@ -148,17 +150,17 @@ export default function DashboardPaymentsPage() {
                       </td>
                       <td className="p-4">
                         <Badge className={getStatusColor(payment.status)}>
-                          {getStatusLabel(payment.status)}
+                          {getStatusLabel(payment.status, t)}
                         </Badge>
                       </td>
                       <td className="p-4">
                         {payment.status === "pending" && (
                           <div className="flex gap-2">
                             <Button size="sm" onClick={() => updateStatus(payment.id, "paid")}>
-                              <CheckCircle className="w-4 h-4 mr-1" /> Оплачено
+                              <CheckCircle className="w-4 h-4 mr-1" /> {t("admin.payments.paid_btn")}
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => updateStatus(payment.id, "overdue")}>
-                              <XCircle className="w-4 h-4 mr-1" /> Просрочено
+                              <XCircle className="w-4 h-4 mr-1" /> {t("admin.payments.overdue_btn")}
                             </Button>
                           </div>
                         )}

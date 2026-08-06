@@ -4,6 +4,7 @@ import { forwardRef, useRef, useState, useEffect, useId, useCallback } from "rea
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/i18n/I18nProvider";
 
 interface SelectOption {
   value: string;
@@ -25,9 +26,10 @@ interface SelectProps {
 
 const Select = forwardRef<HTMLButtonElement, SelectProps>(
   (
-    { label, error, options, value, onChange, id, className, disabled, placeholder = "Выберите...", size = "md" },
+    { label, error, options, value, onChange, id, className, disabled, placeholder, size = "md" },
     ref,
   ) => {
+    const { t } = useT();
     const [open, setOpen] = useState(false);
     const [highlighted, setHighlighted] = useState(-1);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -114,7 +116,7 @@ const Select = forwardRef<HTMLButtonElement, SelectProps>(
             )}
           >
             <span className={cn("truncate", !selected && "text-zinc-500")}>
-              {selected ? selected.label : placeholder}
+              {selected ? selected.label : placeholder ?? t("select.placeholder")}
             </span>
             <ChevronDown
               className={cn(
@@ -137,7 +139,7 @@ const Select = forwardRef<HTMLButtonElement, SelectProps>(
                   className="absolute z-40 mt-2 w-full min-w-[180px] max-h-72 overflow-y-auto bg-zinc-900/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl shadow-black/50 p-1"
                 >
                   {options.length === 0 ? (
-                    <p className="px-3 py-2.5 text-sm text-zinc-500">Нет вариантов</p>
+                    <p className="px-3 py-2.5 text-sm text-zinc-500">{t("select.no_options")}</p>
                   ) : (
                     options.map((opt, i) => {
                       const isSelected = opt.value === value;

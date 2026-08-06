@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building, Users, Calendar, DollarSign, MessageSquare, Trash2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Users, Calendar, DollarSign, Trash2, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -12,11 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getStatusColor, formatDate, formatCurrency, getStatusLabel } from "@/lib/utils";
+import { useT } from "@/i18n/I18nProvider";
 import type { Studio, StudioClient, StudioAppointment, Payment } from "@/types";
 
 export default function DashboardStudioDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { t } = useT();
   const [studio, setStudio] = useState<Studio | null>(null);
   const [clients, setClients] = useState<StudioClient[]>([]);
   const [appointments, setAppointments] = useState<(StudioAppointment & { studio_clients?: { name: string }; studio_services?: { name: string } })[]>([]);
@@ -85,11 +87,11 @@ export default function DashboardStudioDetailPage() {
     setDeleting(false);
 
     if (!result.ok) {
-      toast.error(result.error || "Не удалось удалить студию");
+      toast.error(result.error || t("admin.studios.delete_failed"));
       return;
     }
 
-    toast.success(`Студия «${studio.name}» удалена`);
+    toast.success(`${t("admin.studios.delete_success")} «${studio.name}»`);
     router.push("/dashboard/studios");
   };
 
@@ -104,9 +106,9 @@ export default function DashboardStudioDetailPage() {
   if (!studio) {
     return (
       <div className="text-center py-20">
-        <p className="text-zinc-500">Студия не найдена</p>
+        <p className="text-zinc-500">{t("admin.studios.not_found")}</p>
         <Link href="/dashboard/studios" className="text-sm text-primary hover:underline mt-2 inline-block">
-          ← К списку студий
+          ← {t("admin.studios.to_list")}
         </Link>
       </div>
     );
@@ -125,7 +127,7 @@ export default function DashboardStudioDetailPage() {
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{studio.name}</h1>
             <Badge className={studio.is_active ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}>
-              {studio.is_active ? "Активна" : "Неактивна"}
+              {studio.is_active ? t("admin.studios.active") : t("admin.studios.inactive")}
             </Badge>
           </div>
           <p className="text-sm text-zinc-400">/{studio.slug}</p>
@@ -137,7 +139,7 @@ export default function DashboardStudioDetailPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-zinc-400">Клиентов</p>
+                <p className="text-sm text-zinc-400">{t("admin.studios.detail_clients")}</p>
                 <p className="text-2xl font-bold">{clients.length}</p>
               </div>
               <Users className="w-8 h-8 text-primary" />
@@ -148,7 +150,7 @@ export default function DashboardStudioDetailPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-zinc-400">Записей</p>
+                <p className="text-sm text-zinc-400">{t("admin.studios.detail_appointments")}</p>
                 <p className="text-2xl font-bold">{appointments.length}</p>
               </div>
               <Calendar className="w-8 h-8 text-yellow-400" />
@@ -159,7 +161,7 @@ export default function DashboardStudioDetailPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-zinc-400">Выручка</p>
+                <p className="text-sm text-zinc-400">{t("admin.studios.detail_revenue")}</p>
                 <p className="text-2xl font-bold">{formatCurrency(totalRevenue)}</p>
               </div>
               <DollarSign className="w-8 h-8 text-emerald-400" />
@@ -170,7 +172,7 @@ export default function DashboardStudioDetailPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-zinc-400">Ожидает оплаты</p>
+                <p className="text-sm text-zinc-400">{t("admin.studios.detail_pending")}</p>
                 <p className="text-2xl font-bold">{pendingPayments.length}</p>
               </div>
               <DollarSign className="w-8 h-8 text-yellow-400" />
@@ -182,23 +184,23 @@ export default function DashboardStudioDetailPage() {
       <div className="grid lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Информация</CardTitle>
+            <CardTitle>{t("admin.studios.detail_info")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-zinc-400">Владелец</span>
+              <span className="text-sm text-zinc-400">{t("admin.studios.detail_owner")}</span>
               <span className="text-sm">{studio.owner_email}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-zinc-400">Телефон</span>
+              <span className="text-sm text-zinc-400">{t("admin.studios.detail_phone")}</span>
               <span className="text-sm">{studio.owner_phone || "—"}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-zinc-400">Адрес</span>
+              <span className="text-sm text-zinc-400">{t("admin.studios.detail_address")}</span>
               <span className="text-sm">{studio.address || "—"}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-zinc-400">Создана</span>
+              <span className="text-sm text-zinc-400">{t("admin.studios.detail_created")}</span>
               <span className="text-sm">{formatDate(studio.created_at)}</span>
             </div>
           </CardContent>
@@ -206,21 +208,21 @@ export default function DashboardStudioDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Последние записи</CardTitle>
+            <CardTitle>{t("admin.studios.recent_appointments")}</CardTitle>
           </CardHeader>
           <CardContent>
             {appointments.length === 0 ? (
-              <p className="text-sm text-zinc-500 text-center py-4">Нет записей</p>
+              <p className="text-sm text-zinc-500 text-center py-4">{t("admin.studios.no_appointments")}</p>
             ) : (
               <div className="space-y-3">
                 {appointments.slice(0, 5).map((apt) => (
                   <div key={apt.id} className="flex items-center justify-between p-3 rounded-xl bg-zinc-800/50">
                     <div>
-                      <p className="text-sm font-medium">{apt.studio_clients?.name || "Клиент"}</p>
-                      <p className="text-xs text-zinc-500">{apt.studio_services?.name || "Услуга"}</p>
+                      <p className="text-sm font-medium">{apt.studio_clients?.name || t("studio.appointments.client")}</p>
+                      <p className="text-xs text-zinc-500">{apt.studio_services?.name || t("studio.appointments.service")}</p>
                     </div>
                     <Badge className={getStatusColor(apt.status)}>
-                      {apt.status === "completed" ? "Выполнено" : apt.status === "scheduled" ? "Запланировано" : apt.status}
+                      {getStatusLabel(apt.status, t)}
                     </Badge>
                   </div>
                 ))}
@@ -232,21 +234,21 @@ export default function DashboardStudioDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Платежи</CardTitle>
+          <CardTitle>{t("admin.studios.payments")}</CardTitle>
         </CardHeader>
         <CardContent>
           {payments.length === 0 ? (
-            <p className="text-sm text-zinc-500 text-center py-4">Нет платежей</p>
+            <p className="text-sm text-zinc-500 text-center py-4">{t("admin.studios.no_payments")}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-zinc-800">
-                    <th className="text-left p-4 text-zinc-400 font-medium">Дата</th>
-                    <th className="text-left p-4 text-zinc-400 font-medium">Сумма</th>
-                    <th className="text-left p-4 text-zinc-400 font-medium">Период</th>
-                    <th className="text-left p-4 text-zinc-400 font-medium">Статус</th>
-                    <th className="text-left p-4 text-zinc-400 font-medium">Действие</th>
+                    <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.payments.date")}</th>
+                    <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.payments.amount")}</th>
+                    <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.payments.period")}</th>
+                    <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.payments.status")}</th>
+                    <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.payments.action")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -261,17 +263,17 @@ export default function DashboardStudioDetailPage() {
                       </td>
                       <td className="p-4">
                         <Badge className={getStatusColor(payment.status)}>
-                          {getStatusLabel(payment.status)}
+                          {getStatusLabel(payment.status, t)}
                         </Badge>
                       </td>
                       <td className="p-4">
                         {payment.status === "pending" && (
                           <div className="flex gap-2">
                             <Button size="sm" onClick={() => updatePaymentStatus(payment.id, "paid")}>
-                              Оплачено
+                              {t("admin.payments.paid_btn")}
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => updatePaymentStatus(payment.id, "overdue")}>
-                              Просрочено
+                              {t("admin.payments.overdue_btn")}
                             </Button>
                           </div>
                         )}
@@ -289,7 +291,7 @@ export default function DashboardStudioDetailPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-red-400">
             <Trash2 className="w-5 h-5" />
-            Опасная зона
+            {t("admin.studios.danger_zone")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -304,14 +306,14 @@ export default function DashboardStudioDetailPage() {
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
               >
                 <div>
-                  <p className="text-sm font-medium">Удалить студию</p>
+                  <p className="text-sm font-medium">{t("admin.studios.delete")}</p>
                   <p className="text-xs text-zinc-500 mt-0.5">
-                    Безвозвратно удалит студию, всех клиентов, записи, услуги, финансы и аккаунт владельца.
+                    {t("admin.studios.delete_desc")}
                   </p>
                 </div>
                 <Button variant="danger" onClick={() => setConfirmOpen(true)} className="flex-shrink-0">
                   <Trash2 className="w-4 h-4" />
-                  Удалить студию
+                  {t("admin.studios.delete")}
                 </Button>
               </motion.div>
             ) : (
@@ -326,13 +328,13 @@ export default function DashboardStudioDetailPage() {
                 <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
                   <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                   <div className="text-sm text-red-300">
-                    Это действие нельзя отменить. Все данные студии <b>{studio.name}</b> будут удалены навсегда.
+                    {t("admin.studios.delete_warning")} <b>{studio.name}</b>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-sm text-zinc-400 block">
-                    Введите название студии <span className="text-zinc-600">«{studio.name}»</span>, чтобы подтвердить:
+                    {t("admin.studios.delete_confirm_label")} <span className="text-zinc-600">«{studio.name}»</span>
                   </label>
                   <input
                     value={confirmName}
@@ -345,13 +347,13 @@ export default function DashboardStudioDetailPage() {
                     autoFocus
                   />
                   {confirmName.trim() !== studio.name.trim() && confirmName.trim() !== "" && (
-                    <p className="text-xs text-red-400">Название не совпадает</p>
+                    <p className="text-xs text-red-400">{t("admin.studios.name_mismatch")}</p>
                   )}
                 </div>
 
                 <div className="flex gap-3 justify-end">
                   <Button variant="outline" onClick={() => { setConfirmOpen(false); setConfirmName(""); }}>
-                    Отмена
+                    {t("admin.studios.cancel")}
                   </Button>
                   <Button
                     variant="danger"
@@ -360,7 +362,7 @@ export default function DashboardStudioDetailPage() {
                     onClick={handleDelete}
                   >
                     <Trash2 className="w-4 h-4" />
-                    Подтвердить удаление
+                    {t("admin.studios.delete_confirm")}
                   </Button>
                 </div>
               </motion.div>

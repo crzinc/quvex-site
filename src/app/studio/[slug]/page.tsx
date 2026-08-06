@@ -5,13 +5,15 @@ import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getStatusColor, formatCurrency, getInitials } from "@/lib/utils";
+import { getStatusColor, getStatusLabel, formatCurrency, getInitials } from "@/lib/utils";
 import { Users, Calendar, DollarSign, TrendingUp } from "lucide-react";
 import Link from "next/link";
+import { useT } from "@/i18n/I18nProvider";
 import type { StudioClient } from "@/types";
 
 export default function StudioDashboardPage() {
   const params = useParams<{ slug: string }>();
+  const { t } = useT();
   const [stats, setStats] = useState({
     total_clients: 0,
     new_clients: 0,
@@ -75,24 +77,24 @@ export default function StudioDashboardPage() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-zinc-400">Загрузка...</p>
+          <p className="text-sm text-zinc-400">{t("common.loading")}</p>
         </div>
       </div>
     );
   }
 
   const statCards = [
-    { title: "Всего клиентов", value: stats.total_clients, icon: Users, color: "text-primary" },
-    { title: "Новых клиентов", value: stats.new_clients, icon: Users, color: "text-blue-400" },
-    { title: "Записей сегодня", value: stats.appointments_today, icon: Calendar, color: "text-yellow-400" },
-    { title: "Выручка за месяц", value: formatCurrency(stats.revenue_month), icon: DollarSign, color: "text-emerald-400" },
+    { title: t("studio.dashboard.total_clients"), value: stats.total_clients, icon: Users, color: "text-primary" },
+    { title: t("studio.dashboard.new_clients"), value: stats.new_clients, icon: Users, color: "text-blue-400" },
+    { title: t("studio.dashboard.appointments_today"), value: stats.appointments_today, icon: Calendar, color: "text-yellow-400" },
+    { title: t("studio.dashboard.revenue_month"), value: formatCurrency(stats.revenue_month), icon: DollarSign, color: "text-emerald-400" },
   ];
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold mb-1">Dashboard</h1>
-        <p className="text-sm text-zinc-400">Обзор вашего автодетейлинга</p>
+        <h1 className="text-2xl font-bold mb-1">{t("studio.dashboard.title")}</h1>
+        <p className="text-sm text-zinc-400">{t("studio.dashboard.subtitle")}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -117,15 +119,15 @@ export default function StudioDashboardPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Последние клиенты</CardTitle>
+              <CardTitle>{t("studio.dashboard.recent_clients")}</CardTitle>
               <Link href={`/studio/${params.slug}/clients`} className="text-sm text-primary hover:underline">
-                Все клиенты →
+                {t("studio.dashboard.all_clients")} →
               </Link>
             </div>
           </CardHeader>
           <CardContent>
             {recentClients.length === 0 ? (
-              <p className="text-sm text-zinc-500 text-center py-8">Нет клиентов</p>
+              <p className="text-sm text-zinc-500 text-center py-8">{t("studio.dashboard.no_clients")}</p>
             ) : (
               <div className="space-y-3">
                 {recentClients.map((client) => (
@@ -146,7 +148,7 @@ export default function StudioDashboardPage() {
                       </div>
                     </div>
                     <Badge className={getStatusColor(client.status)}>
-                      {client.status === "new" ? "Новый" : client.status === "regular" ? "Постоянный" : client.status === "vip" ? "VIP" : "Неактивный"}
+                      {getStatusLabel(client.status, t)}
                     </Badge>
                   </Link>
                 ))}
@@ -158,7 +160,7 @@ export default function StudioDashboardPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Быстрые действия</CardTitle>
+              <CardTitle>{t("studio.dashboard.quick_actions")}</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -168,8 +170,8 @@ export default function StudioDashboardPage() {
             >
               <Users className="w-5 h-5 text-primary" />
               <div>
-                <p className="font-medium text-white">Добавить клиента</p>
-                <p className="text-xs text-zinc-500">Зарегистрировать нового клиента</p>
+                <p className="font-medium text-white">{t("studio.dashboard.add_client")}</p>
+                <p className="text-xs text-zinc-500">{t("studio.dashboard.add_client_desc")}</p>
               </div>
             </Link>
             <Link
@@ -178,8 +180,8 @@ export default function StudioDashboardPage() {
             >
               <Calendar className="w-5 h-5 text-yellow-400" />
               <div>
-                <p className="font-medium text-white">Новая запись</p>
-                <p className="text-xs text-zinc-500">Записать клиента на обслуживание</p>
+                <p className="font-medium text-white">{t("studio.dashboard.new_appointment")}</p>
+                <p className="text-xs text-zinc-500">{t("studio.dashboard.new_appointment_desc")}</p>
               </div>
             </Link>
             <Link
@@ -188,8 +190,8 @@ export default function StudioDashboardPage() {
             >
               <TrendingUp className="w-5 h-5 text-blue-400" />
               <div>
-                <p className="font-medium text-white">Написать в поддержку</p>
-                <p className="text-xs text-zinc-500">Задать вопрос команде Quvex</p>
+                <p className="font-medium text-white">{t("studio.dashboard.support")}</p>
+                <p className="text-xs text-zinc-500">{t("studio.dashboard.support_desc")}</p>
               </div>
             </Link>
           </CardContent>

@@ -12,10 +12,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
+import { useT } from "@/i18n/I18nProvider";
 
 function NewAppointmentForm({ slug }: { slug: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useT();
   const preselectedClient = searchParams.get("client") || "";
   const supabase = useRef(createClient());
   const [clients, setClients] = useState<{ id: string; name: string; phone: string }[]>([]);
@@ -65,7 +67,7 @@ function NewAppointmentForm({ slug }: { slug: string }) {
 
   const handleCreate = async () => {
     if (!form.client_id || !form.scheduled_at) {
-      toast.error("Укажите клиента и дату");
+      toast.error(t("common.fill_client_date"));
       return;
     }
 
@@ -91,9 +93,9 @@ function NewAppointmentForm({ slug }: { slug: string }) {
     });
 
     if (error) {
-      toast.error("Ошибка при создании записи");
+      toast.error(t("common.appointment_error"));
     } else {
-      toast.success("Запись создана");
+      toast.success(t("common.appointment_created"));
       router.push(`/studio/${slug}/appointments`);
       router.refresh();
     }
@@ -114,39 +116,39 @@ function NewAppointmentForm({ slug }: { slug: string }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calendar className="w-5 h-5" />
-          Новая запись
+          {t("studio.appointments.new")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <Select
-          label="Клиент *"
+          label={`${t("studio.appointments.client")} *`}
           value={form.client_id}
           onChange={(value) => setForm({ ...form, client_id: value })}
-          options={clients.map((c) => ({ value: c.id, label: `${c.name} (${c.phone || "без телефона"})` }))}
+          options={clients.map((c) => ({ value: c.id, label: `${c.name} (${c.phone || t("studio.appointments.no_phone")})` }))}
         />
         <Select
-          label="Услуга"
+          label={t("studio.appointments.service")}
           value={form.service_id}
           onChange={(value) => setForm({ ...form, service_id: value })}
           options={services.map((s) => ({ value: s.id, label: `${s.name} — ${formatCurrency(s.price)}` }))}
         />
         <Input
-          label="Дата и время *"
+          label={`${t("studio.appointments.datetime")} *`}
           type="datetime-local"
           value={form.scheduled_at}
           onChange={(e) => setForm({ ...form, scheduled_at: e.target.value })}
         />
         <Textarea
-          label="Заметки"
-          placeholder="Дополнительная информация..."
+          label={t("studio.appointments.notes")}
+          placeholder={t("studio.appointments.notes_placeholder")}
           value={form.notes}
           onChange={(e) => setForm({ ...form, notes: e.target.value })}
           rows={3}
         />
         <div className="flex gap-2">
-          <Button onClick={handleCreate} loading={saving}>Создать запись</Button>
+          <Button onClick={handleCreate} loading={saving}>{t("studio.appointments.create_appointment")}</Button>
           <Link href={`/studio/${slug}/appointments`}>
-            <Button variant="outline">Отмена</Button>
+            <Button variant="outline">{t("studio.appointments.cancel")}</Button>
           </Link>
         </div>
       </CardContent>
@@ -156,6 +158,7 @@ function NewAppointmentForm({ slug }: { slug: string }) {
 
 export default function StudioNewAppointmentPage() {
   const params = useParams<{ slug: string }>();
+  const { t } = useT();
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -164,8 +167,8 @@ export default function StudioNewAppointmentPage() {
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">Новая запись</h1>
-          <p className="text-sm text-zinc-400">Записать клиента на обслуживание</p>
+          <h1 className="text-2xl font-bold">{t("studio.appointments.new")}</h1>
+          <p className="text-sm text-zinc-400">{t("studio.appointments.subtitle")}</p>
         </div>
       </div>
 
