@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { DollarSign, CheckCircle, XCircle, Clock } from "lucide-react";
+import { DollarSign, Clock, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,17 +32,48 @@ export default function DashboardPaymentsPage() {
   }, []);
 
   const updateStatus = async (id: string, status: string) => {
+    const { data: user } = await supabase.current.auth.getUser();
+    const now = new Date().toISOString();
+    const confirmedAt = status === "paid" ? now : null;
+
     const { error } = await supabase.current
       .from("payments")
-      .update({ status, confirmed_at: new Date().toISOString() })
+      .update({
+        status,
+        confirmed_at: confirmedAt,
+        confirmed_by: confirmedAt ? user.user?.id ?? null : null,
+      })
       .eq("id", id);
 
     if (!error) {
-      setPayments(payments.map((p) => p.id === id ? { ...p, status: status as Payment["status"], confirmed_at: new Date().toISOString() } : p));
+      setPayments(payments.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              status: status as Payment["status"],
+              confirmed_at: confirmedAt,
+              confirmed_by: confirmedAt ? (user.user?.id ?? null) : null,
+            }
+          : p,
+      ));
     }
   };
 
-  const filteredPayments = filter === "all"
+  const updatePeriod = async (id: string, field: "period_start" | "period_end", value: string) => {
+    const { error } = await supabase.current
+      .from("payments")
+      .update({ [field]: value || null })
+      .eq("id", id);
+
+    if (!error) {
+      setPayments(payments.map((p) => p.id === id ? { ...p, [field]: value || null } : p));
+    }
+  };
+
+  const statusOptions = ["pending", "paid", "overdue", "cancelled"].map((s) => ({
+    value: s,
+    label: getStatusLabel(s, t),
+  }));  const filteredPayments = filter === "all"
     ? payments
     : payments.filter((p) => p.status === filter);
 
@@ -144,9 +175,21 @@ export default function DashboardPaymentsPage() {
                       <td className="p-4 text-zinc-300">{formatDate(payment.created_at)}</td>
                       <td className="p-4 font-medium">{formatCurrency(payment.amount)}</td>
                       <td className="p-4 text-zinc-500">
-                        {payment.period_start && payment.period_end
-                          ? `${formatDate(payment.period_start)} — ${formatDate(payment.period_end)}`
-                          : "—"}
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="date"
+                            value={payment.period_start ?? ""}
+                            onChange={(e) => updatePeriod(payment.id, "period_start", e.target.value)}
+                            className="bg-zinc-900/50 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-300 focus:outline-none focus:border-primary/50"
+                          />
+                          <span>—</span>
+                          <input
+                            type="date"
+                            value={payment.period_end ?? ""}
+                            onChange={(e) => updatePeriod(payment.id, "period_end", e.target.value)}
+                            className="bg-zinc-900/50 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-300 focus:outline-none focus:border-primary/50"
+                          />
+                        </div>
                       </td>
                       <td className="p-4">
                         <Badge className={getStatusColor(payment.status)}>
@@ -154,16 +197,20 @@ export default function DashboardPaymentsPage() {
                         </Badge>
                       </td>
                       <td className="p-4">
-                        {payment.status === "pending" && (
-                          <div className="flex gap-2">
-                            <Button size="sm" onClick={() => updateStatus(payment.id, "paid")}>
-                              <CheckCircle className="w-4 h-4 mr-1" /> {t("admin.payments.paid_btn")}
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => updateStatus(payment.id, "overdue")}>
-                              <XCircle className="w-4 h-4 mr-1" /> {t("admin.payments.overdue_btn")}
-                            </Button>
-                          </div>
-                        )}
+                        <div className="relative">
+                          <select
+                            value={payment.status}
+                            onChange={(e) => updateStatus(payment.id, e.target.value)}
+                            className="w-36 appearance-none bg-zinc-900/50 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/25 cursor-pointer hover:border-zinc-700 transition-colors"
+                          >
+                            {statusOptions.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="w-4 h-4 text-zinc-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
                       </td>
                     </tr>
                   ))

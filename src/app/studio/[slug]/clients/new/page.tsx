@@ -92,7 +92,7 @@ export default function StudioNewClientPage() {
           <CardContent className="space-y-4">
             <Input
               label={t("studio.client.name") + " *"}
-              placeholder="Иван Иванов"
+              placeholder={t("studio.client.name_placeholder")}
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
@@ -101,7 +101,7 @@ export default function StudioNewClientPage() {
               <Input
                 label={t("studio.client.phone")}
                 type="tel"
-                placeholder="+7 (999) 123-45-67"
+                placeholder={t("studio.client.phone_placeholder")}
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
               />
@@ -145,19 +145,19 @@ export default function StudioNewClientPage() {
               />
               <Input
                 label={t("studio.client.color")}
-                placeholder="Белый"
+                placeholder={t("studio.client.color_placeholder")}
                 value={form.car_color}
                 onChange={(e) => setForm({ ...form, car_color: e.target.value })}
               />
               <Input
                 label={t("studio.client.plate")}
-                placeholder="А123БВ777"
+                placeholder={t("studio.client.plate_placeholder")}
                 value={form.license_plate}
                 onChange={(e) => setForm({ ...form, license_plate: e.target.value })}
               />
             </div>
             <Input
-              label="VIN"
+              label={`${t("studio.client.vin")} (${t("studio.client.optional")})`}
               placeholder="JTDKN3DU5A0123456"
               value={form.car_vin}
               onChange={(e) => setForm({ ...form, car_vin: e.target.value })}
