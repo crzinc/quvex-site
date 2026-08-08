@@ -14,9 +14,9 @@ export function formatDate(date: string | Date) {
 }
 
 export function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("ru-RU", {
+  return new Intl.NumberFormat("az-AZ", {
     style: "currency",
-    currency: "USD",
+    currency: "AZN",
   }).format(amount);
 }
 

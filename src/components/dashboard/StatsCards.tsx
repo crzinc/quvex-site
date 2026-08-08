@@ -20,7 +20,7 @@ const cards = [
   { key: "total_clients", label: "dashboard.stat_total", icon: Users, color: "text-blue-400 bg-blue-500/10", format: (v: number) => v.toString() },
   { key: "active_projects", label: "dashboard.stat_active", icon: Briefcase, color: "text-emerald-400 bg-emerald-500/10", format: (v: number) => v.toString() },
   { key: "monthly_leads", label: "dashboard.stat_leads", icon: TrendingUp, color: "text-purple-400 bg-purple-500/10", format: (v: number) => v.toString() },
-  { key: "revenue", label: "dashboard.stat_revenue", icon: DollarSign, color: "text-yellow-400 bg-yellow-500/10", format: (v: number) => `$${(v / 1000).toFixed(1)}K` },
+  { key: "revenue", label: "dashboard.stat_revenue", icon: DollarSign, color: "text-yellow-400 bg-yellow-500/10", format: (v: number) => `₼${(v / 1000).toFixed(1)}K` },
 ];
 
 export default function StatsCards({ stats }: StatsCardsProps) {
