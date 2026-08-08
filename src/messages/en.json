@@ -71,6 +71,7 @@
 
   "quiz.badge": "Request",
   "quiz.title": "Leave a request in 2 minutes",
+  "quiz.title_suffix": "and get a free consultation",
   "quiz.desc": "Answer 4 questions and get CRM setup recommendations",
   "quiz.q1_question": "What type of business do you have?",
   "quiz.q1_opt1": "Detailing studio",

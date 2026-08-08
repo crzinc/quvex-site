@@ -17,7 +17,7 @@ function TorusKnot() {
   return (
     <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.5}>
       <mesh ref={meshRef} scale={1.2}>
-        <torusKnotGeometry args={[1, 0.3, 128, 16]} />
+        <torusKnotGeometry args={[1, 0.3, 64, 10]} />
         <MeshDistortMaterial
           color="#a855f7"
           emissive="#a855f7"
@@ -33,7 +33,7 @@ function TorusKnot() {
 }
 
 function createParticleGeometry() {
-  const count = 2000;
+  const count = 1200;
   const positions = new Float32Array(count * 3);
   for (let i = 0; i < count; i++) {
     positions[i * 3] = (Math.random() - 0.5) * 30;
@@ -68,10 +68,15 @@ function Particles() {
   );
 }
 
-export default function HeroScene() {
+export default function HeroScene({ active = true }: { active?: boolean }) {
   return (
     <div className="absolute inset-0 z-0">
-      <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
+      <Canvas
+        frameloop={active ? "always" : "never"}
+        dpr={[1, 1.75]}
+        camera={{ position: [0, 0, 5], fov: 45 }}
+        gl={{ powerPreference: "high-performance", antialias: true }}
+      >
         <ambientLight intensity={0.5} />
         <directionalLight position={[5, 5, 5]} intensity={1} />
         <pointLight position={[-5, -5, 5]} intensity={0.5} color="#06b6d4" />

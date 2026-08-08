@@ -71,6 +71,7 @@
 
   "quiz.badge": "Müraciət",
   "quiz.title": "2 dəqiqəyə müraciət edin",
+  "quiz.title_suffix": "və pulsuz konsultasiya əldə edin",
   "quiz.desc": "4 suala cavab verin və CRM quraşdırma tövsiyələri alın",
   "quiz.q1_question": "Biznes tipiniz nədir?",
   "quiz.q1_opt1": "Deteyling studiyası",

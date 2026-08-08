@@ -1,19 +1,41 @@
 "use client";
 
+import { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Building2, Users, TrendingUp, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/I18nProvider";
 import dynamic from "next/dynamic";
 
-const HeroScene = dynamic(() => import("@/components/three/HeroScene"), { ssr: false });
+const HeroScene = dynamic(
+  () => import("@/components/three/HeroScene"),
+  { ssr: false, loading: () => <div className="absolute inset-0 z-0 hero-grid" /> },
+);
 
 export default function Hero() {
   const { t } = useT();
+  const sectionRef = useRef<HTMLElement>(null);
+  const [active, setActive] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  });
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setActive(entry.isIntersecting),
+      { threshold: 0.05 },
+    );
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden hero-grid">
-      <HeroScene />
+    <section ref={sectionRef} className="relative min-h-screen flex items-center overflow-hidden hero-grid">
+      <HeroScene active={active} />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 lg:py-40">
         <div className="max-w-4xl">

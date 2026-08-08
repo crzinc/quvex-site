@@ -102,7 +102,10 @@ export default function QuizSection() {
           className="text-center mb-12"
         >
           <span className="text-sm text-primary font-medium">{t("quiz.badge")}</span>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mt-3 mb-4">{t("quiz.title")}</h2>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mt-3 mb-4">
+            {t("quiz.title")}
+            <span className="block text-primary text-2xl sm:text-3xl lg:text-4xl mt-3">{t("quiz.title_suffix")}</span>
+          </h2>
           <p className="text-zinc-400 max-w-2xl mx-auto">{t("quiz.desc")}</p>
         </motion.div>
 
