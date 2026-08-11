@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import { Plus, Calendar, Clock, CheckCircle, XCircle } from "lucide-react";
+import Link from "next/link";
+import { Plus, Calendar, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +23,7 @@ export default function StudioAppointmentsPage() {
   const [services, setServices] = useState<{ id: string; name: string; price: number; duration_minutes: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     client_id: "",
@@ -102,44 +104,74 @@ export default function StudioAppointmentsPage() {
   };
 
   const updateStatus = async (id: string, status: string) => {
-    if (status === "completed") {
-      const { data: apt } = await supabase.current
-        .from("studio_appointments")
-        .select("id, studio_id, client_id, final_price")
-        .eq("id", id)
-        .single();
+    const { data: apt } = await supabase.current
+      .from("studio_appointments")
+      .select("id, studio_id, client_id, final_price, status")
+      .eq("id", id)
+      .single();
 
-      if (apt) {
-        const { error: txError } = await supabase.current.from("studio_transactions").insert({
-          studio_id: apt.studio_id,
-          appointment_id: apt.id,
-          client_id: apt.client_id,
-          type: "income",
-          amount: Number(apt.final_price) || 0,
-          category: "service",
-          payment_method: "cash",
-          description: t("common.completed_visit"),
-        });
+    if (!apt) {
+      toast.error(t("common.status_error"));
+      return;
+    }
 
-        if (txError) console.error("Transaction insert error:", txError.message);
+    const previous = apt.status;
+    const amount = Number(apt.final_price) || 0;
 
-        if (apt.client_id) {
-          const { data: client } = await supabase.current
+    if (status === "completed" && previous !== "completed") {
+      const { error: txError } = await supabase.current.from("studio_transactions").insert({
+        studio_id: apt.studio_id,
+        appointment_id: apt.id,
+        client_id: apt.client_id,
+        type: "income",
+        amount,
+        category: "service",
+        payment_method: "cash",
+        description: t("common.completed_visit"),
+      });
+
+      if (txError) console.error("Transaction insert error:", txError.message);
+
+      if (apt.client_id) {
+        const { data: client } = await supabase.current
+          .from("studio_clients")
+          .select("total_visits, total_spent")
+          .eq("id", apt.client_id)
+          .single();
+
+        if (client) {
+          await supabase.current
             .from("studio_clients")
-            .select("total_visits, total_spent")
-            .eq("id", apt.client_id)
-            .single();
+            .update({
+              total_visits: (client.total_visits || 0) + 1,
+              total_spent: Number(client.total_spent || 0) + amount,
+              last_visit: new Date().toISOString().slice(0, 10),
+            })
+            .eq("id", apt.client_id);
+        }
+      }
+    } else if (previous === "completed" && status !== "completed") {
+      await supabase.current
+        .from("studio_transactions")
+        .delete()
+        .eq("appointment_id", apt.id)
+        .eq("type", "income");
 
-          if (client) {
-            await supabase.current
-              .from("studio_clients")
-              .update({
-                total_visits: (client.total_visits || 0) + 1,
-                total_spent: Number(client.total_spent || 0) + (Number(apt.final_price) || 0),
-                last_visit: new Date().toISOString().slice(0, 10),
-              })
-              .eq("id", apt.client_id);
-          }
+      if (apt.client_id) {
+        const { data: client } = await supabase.current
+          .from("studio_clients")
+          .select("total_visits, total_spent")
+          .eq("id", apt.client_id)
+          .single();
+
+        if (client) {
+          await supabase.current
+            .from("studio_clients")
+            .update({
+              total_visits: Math.max((client.total_visits || 0) - 1, 0),
+              total_spent: Math.max(Number(client.total_spent || 0) - amount, 0),
+            })
+            .eq("id", apt.client_id);
         }
       }
     }
@@ -157,9 +189,19 @@ export default function StudioAppointmentsPage() {
     }
   };
 
-  const filteredAppointments = filter === "all"
-    ? appointments
-    : appointments.filter((a) => a.status === filter);
+  const filteredAppointments = appointments.filter((a) => {
+    const matchesStatus = filter === "all" || a.status === filter;
+    if (!matchesStatus) return false;
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      (a.studio_clients?.name || "").toLowerCase().includes(q) ||
+      (a.studio_clients?.phone || "").toLowerCase().includes(q) ||
+      (a.studio_services?.name || "").toLowerCase().includes(q) ||
+      a.status.toLowerCase().includes(q) ||
+      getStatusLabel(a.status, t).toLowerCase().includes(q)
+    );
+  });
 
   if (loading) {
     return (
@@ -219,8 +261,19 @@ export default function StudioAppointmentsPage() {
         </Card>
       )}
 
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+        <input
+          type="text"
+          placeholder={t("studio.appointments.search")}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-primary/50 transition-colors"
+        />
+      </div>
+
       <div className="flex gap-2 flex-wrap">
-        {["all", "scheduled", "in_progress", "completed", "cancelled"].map((f) => (
+        {["all", "scheduled", "in_progress", "completed", "cancelled", "no_show"].map((f) => (
           <Button
             key={f}
             variant={filter === f ? "primary" : "outline"}
@@ -236,7 +289,7 @@ export default function StudioAppointmentsPage() {
         {filteredAppointments.length === 0 ? (
           <div className="text-center py-12">
             <Calendar className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
-            <p className="text-zinc-500">{t("studio.appointments.empty")}</p>
+            <p className="text-zinc-500">{search ? t("studio.list.no_results") : t("studio.appointments.empty")}</p>
           </div>
         ) : (
           filteredAppointments.map((apt) => (
@@ -248,7 +301,16 @@ export default function StudioAppointmentsPage() {
                       <Calendar className="w-5 h-5 text-zinc-400" />
                     </div>
                     <div>
-                      <p className="font-medium">{apt.studio_clients?.name || t("studio.appointments.client")}</p>
+                      {apt.client_id && apt.studio_clients?.name ? (
+                        <Link
+                          href={`/studio/${params.slug}/clients/${apt.client_id}`}
+                          className="font-medium hover:text-primary hover:underline transition-colors"
+                        >
+                          {apt.studio_clients.name}
+                        </Link>
+                      ) : (
+                        <p className="font-medium">{t("studio.appointments.client")}</p>
+                      )}
                       <p className="text-sm text-zinc-400">
                         {apt.studio_services?.name || t("studio.appointments.service")} • {formatCurrency(apt.final_price)}
                       </p>
@@ -262,22 +324,19 @@ export default function StudioAppointmentsPage() {
                     <Badge className={getStatusColor(apt.status)}>
                       {getStatusLabel(apt.status, t)}
                     </Badge>
-                    <div className="flex gap-1">
-                      {apt.status === "scheduled" && (
-                        <Button variant="ghost" size="sm" onClick={() => updateStatus(apt.id, "in_progress")}>
-                          <Clock className="w-4 h-4 text-yellow-400" />
-                        </Button>
-                      )}
-                      {apt.status === "in_progress" && (
-                        <Button variant="ghost" size="sm" onClick={() => updateStatus(apt.id, "completed")}>
-                          <CheckCircle className="w-4 h-4 text-emerald-400" />
-                        </Button>
-                      )}
-                      {(apt.status === "scheduled" || apt.status === "in_progress") && (
-                        <Button variant="ghost" size="sm" onClick={() => updateStatus(apt.id, "cancelled")}>
-                          <XCircle className="w-4 h-4 text-accent" />
-                        </Button>
-                      )}
+                    <div className="w-36">
+                      <Select
+                        size="sm"
+                        value={apt.status}
+                        onChange={(value) => updateStatus(apt.id, value)}
+                        options={[
+                          { value: "scheduled", label: t("appointment.scheduled") },
+                          { value: "in_progress", label: t("appointment.in_progress") },
+                          { value: "completed", label: t("appointment.completed") },
+                          { value: "cancelled", label: t("appointment.cancelled") },
+                          { value: "no_show", label: t("appointment.no_show") },
+                        ]}
+                      />
                     </div>
                   </div>
                 </div>

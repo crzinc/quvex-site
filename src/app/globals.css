@@ -35,14 +35,18 @@ body {
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #a855f7, #06b6d4);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .gradient-bg {
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(6, 182, 212, 0.1));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-primary) 10%, transparent),
+    color-mix(in srgb, var(--color-secondary) 10%, transparent)
+  );
 }
 
 .gradient-border {
@@ -55,7 +59,7 @@ body {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, #a855f7, #06b6d4);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -63,11 +67,12 @@ body {
 }
 
 .glow {
-  box-shadow: 0 0 40px rgba(168, 85, 247, 0.15), 0 0 80px rgba(6, 182, 212, 0.1);
+  box-shadow: 0 0 40px color-mix(in srgb, var(--color-primary) 15%, transparent),
+    0 0 80px color-mix(in srgb, var(--color-secondary) 10%, transparent);
 }
 
 .glow-sm {
-  box-shadow: 0 0 20px rgba(168, 85, 247, 0.1);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
 .animate-fade-in {

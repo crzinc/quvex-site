@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import { Send, MessageSquare, AlertCircle, Bug, Lightbulb, CreditCard } from "lucide-react";
+import { Send, MessageSquare, AlertCircle, Bug, Lightbulb, CreditCard, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,6 +23,7 @@ export default function StudioMessagesPage() {
   const [showForm, setShowForm] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<StudioMessage | null>(null);
   const [reply, setReply] = useState("");
+  const [search, setSearch] = useState("");
   const [form, setForm] = useState({
     subject: "",
     message: "",
@@ -115,6 +116,15 @@ export default function StudioMessagesPage() {
     }
   };
 
+  const filteredMessages = messages.filter((m) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      (m.subject || "").toLowerCase().includes(q) ||
+      (m.message || "").toLowerCase().includes(q)
+    );
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -189,13 +199,24 @@ export default function StudioMessagesPage() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-3">
-          {messages.length === 0 ? (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <input
+              type="text"
+              placeholder={t("studio.messages.search")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-primary/50 transition-colors"
+            />
+          </div>
+
+          {filteredMessages.length === 0 ? (
             <div className="text-center py-12">
               <MessageSquare className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
-              <p className="text-zinc-500">{t("studio.messages.empty")}</p>
+              <p className="text-zinc-500">{search ? t("studio.list.no_results") : t("studio.messages.empty")}</p>
             </div>
           ) : (
-            messages.map((msg) => (
+            filteredMessages.map((msg) => (
               <Card
                 key={msg.id}
                 className={`cursor-pointer transition-colors ${

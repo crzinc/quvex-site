@@ -1,21 +1,114 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Building, KeyRound, CheckCircle2, ExternalLink } from "lucide-react";
+import { ArrowLeft, Building, KeyRound, CheckCircle2, ExternalLink, Inbox, Search, Mail, Phone, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { createStudioAccount, type StudioAccountInput } from "@/lib/studio-actions";
 import { useT } from "@/i18n/I18nProvider";
+import { createClient } from "@/lib/supabase/client";
+import { cn, getStatusColor, getStatusLabel, formatCurrency } from "@/lib/utils";
+import type { Client } from "@/types";
+
+function RequestPicker({
+  requests,
+  selectedId,
+  onSelect,
+}: {
+  requests: Client[];
+  selectedId: string | null;
+  onSelect: (client: Client | null) => void;
+}) {
+  const { t } = useT();
+  const [query, setQuery] = useState("");
+
+  const filtered = requests.filter((r) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      r.name.toLowerCase().includes(q) ||
+      (r.company || "").toLowerCase().includes(q) ||
+      (r.email || "").toLowerCase().includes(q) ||
+      (r.phone || "").toLowerCase().includes(q)
+    );
+  });
+
+  return (
+    <div>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("admin.studios.request_search")}
+          className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/25 transition-all duration-200"
+        />
+      </div>
+
+      <div className="mt-2 max-h-56 overflow-y-auto space-y-1">
+        {filtered.length === 0 ? (
+          <p className="text-sm text-zinc-500 py-4 text-center">{t("admin.studios.no_requests")}</p>
+        ) : (
+          filtered.map((r) => {
+            const isSelected = r.id === selectedId;
+            return (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => onSelect(isSelected ? null : r)}
+                className={cn(
+                  "w-full text-left px-3 py-2.5 rounded-xl border transition-colors flex items-center gap-3",
+                  isSelected
+                    ? "bg-primary/10 border-primary/40"
+                    : "bg-zinc-900/40 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/50",
+                )}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-white truncate">{r.name || "—"}</p>
+                    {r.company && <p className="text-xs text-zinc-500 truncate">{r.company}</p>}
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-zinc-500 mt-0.5">
+                    {r.email && (
+                      <span className="flex items-center gap-1 min-w-0">
+                        <Mail className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{r.email}</span>
+                      </span>
+                    )}
+                    {r.phone && (
+                      <span className="flex items-center gap-1 shrink-0">
+                        <Phone className="w-3 h-3" />
+                        {r.phone}
+                      </span>
+                    )}
+                    {r.budget ? <span className="text-zinc-400 shrink-0">{formatCurrency(r.budget)}</span> : null}
+                  </div>
+                </div>
+                <Badge className={cn("shrink-0", getStatusColor(r.status))}>
+                  {getStatusLabel(r.status, t)}
+                </Badge>
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardNewStudioPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ studio_id: string; name: string; owner_email: string; password: string } | null>(null);
   const { t } = useT();
+  const [requests, setRequests] = useState<Client[]>([]);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const supabase = useRef(createClient());
   const [form, setForm] = useState({
     name: "",
     owner_email: "",
@@ -26,6 +119,25 @@ export default function DashboardNewStudioPage() {
     payment_amount: "",
     payment_method: "cash",
   });
+
+  useEffect(() => {
+    supabase.current.from("clients").select("*").order("created_at", { ascending: false }).then(({ data }) => {
+      if (data) setRequests(data as unknown as Client[]);
+    });
+  }, []);
+
+  const applyRequest = (client: Client | null) => {
+    setSelectedRequestId(client?.id ?? null);
+    if (!client) return;
+    setForm({
+      ...form,
+      name: client.company || client.name,
+      owner_email: client.email || "",
+      owner_phone: client.phone || "",
+      description: client.description || client.company || "",
+      payment_amount: client.budget ? String(client.budget) : "",
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +234,31 @@ export default function DashboardNewStudioPage() {
           <p className="text-sm text-zinc-400">{t("admin.studios.new_subtitle")}</p>
         </div>
       </div>
+
+      {requests.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Inbox className="w-5 h-5" />
+              {t("admin.studios.fill_from_request")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-zinc-400 mb-3">{t("admin.studios.fill_from_request_desc")}</p>
+            <RequestPicker requests={requests} selectedId={selectedRequestId} onSelect={applyRequest} />
+            {selectedRequestId && (
+              <button
+                type="button"
+                onClick={() => applyRequest(null)}
+                className="mt-3 inline-flex items-center gap-1 text-sm text-zinc-400 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+                {t("admin.studios.clear_request")}
+              </button>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>

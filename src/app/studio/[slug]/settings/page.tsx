@@ -8,20 +8,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { getStudioTheme, cn } from "@/lib/utils";
+import { getStudioTheme, deriveThemeColors, cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useT } from "@/i18n/I18nProvider";
 
-const THEME_PRESETS: { id: string; primary: string; primary_dark: string; primary_light: string }[] = [
-  { id: "purple", primary: "#a855f7", primary_dark: "#7c3aed", primary_light: "#c084fc" },
-  { id: "blue", primary: "#3b82f6", primary_dark: "#2563eb", primary_light: "#60a5fa" },
-  { id: "teal", primary: "#14b8a6", primary_dark: "#0d9488", primary_light: "#2dd4bf" },
-  { id: "emerald", primary: "#10b981", primary_dark: "#059669", primary_light: "#34d399" },
-  { id: "amber", primary: "#f59e0b", primary_dark: "#d97706", primary_light: "#fbbf24" },
-  { id: "red", primary: "#ef4444", primary_dark: "#dc2626", primary_light: "#f87171" },
-  { id: "pink", primary: "#ec4899", primary_dark: "#db2777", primary_light: "#f472b6" },
-  { id: "white", primary: "#fafafa", primary_dark: "#e4e4e7", primary_light: "#ffffff" },
+const THEME_PRESETS: { id: string; primary: string }[] = [
+  { id: "purple", primary: "#a855f7" },
+  { id: "blue", primary: "#3b82f6" },
+  { id: "teal", primary: "#14b8a6" },
+  { id: "emerald", primary: "#10b981" },
+  { id: "amber", primary: "#f59e0b" },
+  { id: "red", primary: "#ef4444" },
+  { id: "pink", primary: "#ec4899" },
 ];
+
+const DEFAULT_THEME = deriveThemeColors("#a855f7");
 
 export default function StudioSettingsPage() {
   const params = useParams<{ slug: string }>();
@@ -35,15 +36,24 @@ export default function StudioSettingsPage() {
     address: "",
     description: "",
     owner_phone: "",
-    logo_url: "",
   });
   const [theme, setTheme] = useState(getStudioTheme(null));
+
+  const isThemeCustom = !THEME_PRESETS.some((p) => p.primary === theme.primary);
+
+  const updateColor = (value: string) => {
+    if (/^#[0-9a-fA-F]{6}$/.test(value.trim())) {
+      setTheme(deriveThemeColors(value.trim()));
+    } else {
+      setTheme((prev) => ({ ...prev, primary: value }));
+    }
+  };
 
   useEffect(() => {
     const fetchStudio = async () => {
       const { data } = await supabase.current
         .from("studios")
-        .select("name, address, description, owner_phone, logo_url, settings")
+        .select("name, address, description, owner_phone, settings")
         .eq("slug", params.slug)
         .single();
 
@@ -53,7 +63,6 @@ export default function StudioSettingsPage() {
           address: data.address || "",
           description: data.description || "",
           owner_phone: data.owner_phone || "",
-          logo_url: data.logo_url || "",
         });
         setTheme(getStudioTheme(data.settings as Record<string, unknown>));
       }
@@ -73,7 +82,6 @@ export default function StudioSettingsPage() {
         address: form.address,
         description: form.description,
         owner_phone: form.owner_phone,
-        logo_url: form.logo_url,
         settings: {
           primary_color: theme.primary,
           primary_dark: theme.primary_dark,
@@ -169,7 +177,7 @@ export default function StudioSettingsPage() {
                   key={preset.id}
                   type="button"
                   title={t(`theme.${preset.id}`)}
-                  onClick={() => setTheme({ primary: preset.primary, primary_dark: preset.primary_dark, primary_light: preset.primary_light })}
+                  onClick={() => setTheme(deriveThemeColors(preset.primary))}
                   className={cn(
                     "w-10 h-10 rounded-xl border-2 transition-all cursor-pointer",
                     theme.primary === preset.primary
@@ -179,6 +187,21 @@ export default function StudioSettingsPage() {
                   style={{ backgroundColor: preset.primary }}
                 />
               ))}
+              <label
+                title={t("studio.settings.custom_color")}
+                className={cn(
+                  "w-10 h-10 rounded-xl border-2 border-dashed flex items-center justify-center text-zinc-500 cursor-pointer transition-all",
+                  isThemeCustom ? "border-white scale-110 shadow-lg" : "border-zinc-700 hover:border-zinc-500",
+                )}
+              >
+                <Palette className="w-4 h-4" />
+                <input
+                  type="color"
+                  value={/^#[0-9a-fA-F]{6}$/.test(theme.primary) ? theme.primary : "#a855f7"}
+                  onChange={(e) => updateColor(e.target.value)}
+                  className="sr-only"
+                />
+              </label>
             </div>
           </div>
 
@@ -187,44 +210,70 @@ export default function StudioSettingsPage() {
             <div className="flex items-center gap-3">
               <input
                 type="color"
-                value={theme.primary}
-                onChange={(e) => setTheme({ ...theme, primary: e.target.value })}
+                value={/^#[0-9a-fA-F]{6}$/.test(theme.primary) ? theme.primary : "#a855f7"}
+                onChange={(e) => updateColor(e.target.value)}
                 className="w-10 h-10 rounded-xl border border-zinc-700 bg-transparent cursor-pointer"
               />
               <Input
                 placeholder="#a855f7"
                 value={theme.primary}
-                onChange={(e) => setTheme({ ...theme, primary: e.target.value })}
-                className="max-w-[200px]"
+                onChange={(e) => updateColor(e.target.value)}
+                className="max-w-[200px] font-mono"
               />
+              <Button variant="outline" size="sm" onClick={() => setTheme(DEFAULT_THEME)}>
+                {t("studio.settings.reset")}
+              </Button>
             </div>
-          </div>
-
-          <div>
-            <p className="text-sm text-zinc-400 mb-2">{t("studio.settings.logo")}</p>
-            <Input
-              placeholder="https://.../logo.png"
-              value={form.logo_url}
-              onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
-            />
+            <div className="flex items-center gap-2 mt-3 text-xs text-zinc-500 font-mono">
+              <span className="px-2 py-1 rounded-lg border border-zinc-800" style={{ backgroundColor: theme.primary_dark }}>dark</span>
+              <span className="px-2 py-1 rounded-lg border border-zinc-800" style={{ backgroundColor: theme.primary }}>primary</span>
+              <span className="px-2 py-1 rounded-lg border border-zinc-800" style={{ backgroundColor: theme.primary_light }}>light</span>
+            </div>
           </div>
 
           <div className="p-4 rounded-xl bg-zinc-800/50">
             <p className="text-xs text-zinc-500 mb-3">{t("studio.settings.preview")}</p>
-            <div className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold"
-                style={{ backgroundColor: theme.primary }}
-              >
-                А
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800">
+                <p className="text-sm font-bold gradient-text mb-3">Quvex CRM</p>
+                <div className="space-y-1.5">
+                  <div
+                    className="px-3 py-2 rounded-lg text-sm font-medium border"
+                    style={{
+                      backgroundColor: "color-mix(in srgb, " + theme.primary + " 10%, transparent)",
+                      color: theme.primary,
+                      borderColor: "color-mix(in srgb, " + theme.primary + " 20%, transparent)",
+                    }}
+                  >
+                    Клиенты
+                  </div>
+                  <div className="px-3 py-2 rounded-lg text-sm text-zinc-400">Записи</div>
+                  <div className="px-3 py-2 rounded-lg text-sm text-zinc-400">Финансы</div>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <span className="px-3 py-1.5 rounded-lg text-white text-sm font-medium" style={{ backgroundColor: theme.primary }}>
-                  {t("studio.settings.button")}
-                </span>
-                <span className="px-3 py-1.5 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: theme.primary_dark }}>
-                  {t("studio.settings.button")}
-                </span>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1.5 rounded-lg text-white text-sm font-medium" style={{ backgroundColor: theme.primary }}>
+                    {t("studio.settings.button")}
+                  </span>
+                  <span className="px-3 py-1.5 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: theme.primary_dark }}>
+                    hover
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="px-3 py-1.5 rounded-lg border text-sm font-medium"
+                    style={{ color: theme.primary, borderColor: theme.primary }}
+                  >
+                    outline
+                  </span>
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold"
+                    style={{ backgroundColor: theme.primary }}
+                  >
+                    А
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -242,11 +291,11 @@ export default function StudioSettingsPage() {
             {t("studio.settings.account")}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <Button variant="outline" onClick={() => router.push("/auth/login")}>
+        <CardContent className="flex flex-col items-center gap-4">
+          <Button variant="outline" className="w-full sm:w-72" onClick={() => router.push("/auth/login")}>
             <LogIn className="w-4 h-4" /> {t("studio.settings.switch_user")}
           </Button>
-          <Button variant="danger" onClick={handleLogout}>
+          <Button variant="danger" className="w-full sm:w-72" onClick={handleLogout}>
             <LogOut className="w-4 h-4" /> {t("studio.settings.logout")}
           </Button>
         </CardContent>

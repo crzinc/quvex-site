@@ -9,8 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Combobox } from "@/components/ui/combobox";
 import { toast } from "sonner";
 import { useT } from "@/i18n/I18nProvider";
+import { CAR_MAKES_LIST, getCarModels } from "@/lib/car-data";
 
 export default function StudioNewClientPage() {
   const params = useParams<{ slug: string }>();
@@ -122,17 +124,20 @@ export default function StudioNewClientPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Input
+              <Combobox
                 label={t("studio.client.make")}
                 placeholder="Toyota"
+                options={CAR_MAKES_LIST}
                 value={form.car_make}
-                onChange={(e) => setForm({ ...form, car_make: e.target.value })}
+                onChange={(value) => setForm({ ...form, car_make: value, car_model: "" })}
               />
-              <Input
+              <Combobox
                 label={t("studio.client.model")}
                 placeholder="Camry"
+                options={getCarModels(form.car_make)}
                 value={form.car_model}
-                onChange={(e) => setForm({ ...form, car_model: e.target.value })}
+                onChange={(value) => setForm({ ...form, car_model: value })}
+                disabled={!form.car_make}
               />
             </div>
             <div className="grid grid-cols-3 gap-4">
@@ -153,7 +158,8 @@ export default function StudioNewClientPage() {
                 label={t("studio.client.plate")}
                 placeholder={t("studio.client.plate_placeholder")}
                 value={form.license_plate}
-                onChange={(e) => setForm({ ...form, license_plate: e.target.value })}
+                onChange={(e) => setForm({ ...form, license_plate: e.target.value.toUpperCase() })}
+                className="uppercase"
               />
             </div>
             <Input

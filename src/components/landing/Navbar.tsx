@@ -62,6 +62,9 @@ export default function Navbar() {
               </a>
             ))}
             <LanguageSwitcher />
+            <Link href="/auth/login">
+              <Button size="sm" variant="ghost">{t("nav.login")}</Button>
+            </Link>
             <a href="#contact">
               <Button size="sm">{t("nav.contact_btn")}</Button>
             </a>
@@ -98,7 +101,10 @@ export default function Navbar() {
                   {t(link.key)}
                 </a>
               ))}
-              <div className="pt-4 border-t border-zinc-800">
+              <div className="pt-4 border-t border-zinc-800 space-y-2">
+                <Link href="/auth/login" className="block" onClick={() => setMobileOpen(false)}>
+                  <Button variant="ghost" className="w-full">{t("nav.login")}</Button>
+                </Link>
                 <a href="#contact" className="block" onClick={() => setMobileOpen(false)}>
                   <Button className="w-full">{t("nav.contact_btn")}</Button>
                 </a>

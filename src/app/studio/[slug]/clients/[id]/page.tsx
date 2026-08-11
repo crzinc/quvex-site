@@ -11,9 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { getStatusColor, getStatusLabel, formatDate, formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
 import { useT } from "@/i18n/I18nProvider";
+import { CAR_MAKES_LIST, getCarModels } from "@/lib/car-data";
 import type { StudioClient, StudioAppointment, StudioService } from "@/types";
 
 export default function StudioClientDetailPage() {
@@ -233,13 +235,24 @@ export default function StudioClientDetailPage() {
               {editing ? (
                 <>
                   <div className="grid grid-cols-2 gap-4">
-                    <Input label={t("studio.client.make")} value={form.car_make} onChange={(e) => setForm({ ...form, car_make: e.target.value })} />
-                    <Input label={t("studio.client.model")} value={form.car_model} onChange={(e) => setForm({ ...form, car_model: e.target.value })} />
+                    <Combobox
+                      label={t("studio.client.make")}
+                      options={CAR_MAKES_LIST}
+                      value={form.car_make}
+                      onChange={(value) => setForm({ ...form, car_make: value, car_model: "" })}
+                    />
+                    <Combobox
+                      label={t("studio.client.model")}
+                      options={getCarModels(form.car_make)}
+                      value={form.car_model}
+                      onChange={(value) => setForm({ ...form, car_model: value })}
+                      disabled={!form.car_make}
+                    />
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <Input label={t("studio.client.year")} type="number" value={form.car_year} onChange={(e) => setForm({ ...form, car_year: e.target.value })} />
                     <Input label={t("studio.client.color")} value={form.car_color} onChange={(e) => setForm({ ...form, car_color: e.target.value })} />
-                    <Input label={t("studio.client.plate")} value={form.license_plate} onChange={(e) => setForm({ ...form, license_plate: e.target.value })} />
+                    <Input label={t("studio.client.plate")} value={form.license_plate} onChange={(e) => setForm({ ...form, license_plate: e.target.value.toUpperCase() })} className="uppercase" />
                   </div>
                   <Input label="VIN" value={form.car_vin} onChange={(e) => setForm({ ...form, car_vin: e.target.value })} />
                 </>

@@ -177,6 +177,30 @@ export function getStudioTheme(settings?: Record<string, unknown> | null): Studi
   };
 }
 
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const clean = hex.replace("#", "").trim();
+  if (!/^[0-9a-fA-F]{6}$/.test(clean)) return null;
+  const num = parseInt(clean, 16);
+  return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+}
+
+export function shadeColor(hex: string, percent: number): string {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
+  const factor = 1 + percent / 100;
+  const toHex = (v: number) => clamp(v).toString(16).padStart(2, "0");
+  return `#${toHex(rgb.r * factor)}${toHex(rgb.g * factor)}${toHex(rgb.b * factor)}`;
+}
+
+export function deriveThemeColors(primary: string): StudioTheme {
+  return {
+    primary,
+    primary_dark: shadeColor(primary, -25),
+    primary_light: shadeColor(primary, 25),
+  };
+}
+
 export function themeVariables(theme: StudioTheme): Record<string, string> {
   return {
     "--color-primary": theme.primary,

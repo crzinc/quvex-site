@@ -141,6 +141,19 @@ export interface StudioTransaction {
   payment_method: "cash" | "card" | "transfer" | "other";
   category: "service" | "product" | "subscription" | "other";
   created_by: string | null;
+  studio_clients?: {
+    name: string;
+    phone: string;
+    car_make: string;
+    car_model: string;
+    license_plate: string;
+  } | null;
+  studio_appointments?: {
+    service_id: string | null;
+    scheduled_at: string | null;
+    technician_name: string;
+    studio_services?: { name: string } | null;
+  } | null;
 }
 
 export interface StudioMessage {

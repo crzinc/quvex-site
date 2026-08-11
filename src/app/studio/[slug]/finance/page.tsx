@@ -2,13 +2,13 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import { Plus, TrendingUp, TrendingDown, Wallet, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Wallet, ArrowDownLeft, ArrowUpRight, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { formatDate, formatCurrency, getPaymentMethodLabel } from "@/lib/utils";
+import { formatDate, formatCurrency, getPaymentMethodLabel, getCategoryLabel } from "@/lib/utils";
 import { toast } from "sonner";
 import { useT } from "@/i18n/I18nProvider";
 import type { StudioTransaction } from "@/types";
@@ -20,6 +20,7 @@ export default function StudioFinancePage() {
   const [transactions, setTransactions] = useState<StudioTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [search, setSearch] = useState("");
   const [form, setForm] = useState({
     type: "income",
     amount: "",
@@ -39,7 +40,9 @@ export default function StudioFinancePage() {
 
     const { data } = await supabase.current
       .from("studio_transactions")
-      .select("*")
+      .select(
+        "*, studio_clients(name, phone, car_make, car_model, license_plate), studio_appointments(service_id, scheduled_at, technician_name, studio_services(name))",
+      )
       .eq("studio_id", studio.id)
       .order("created_at", { ascending: false })
       .limit(100);
@@ -92,6 +95,22 @@ export default function StudioFinancePage() {
   const monthIncome = transactions
     .filter((t) => t.type === "income" && new Date(t.created_at).getMonth() === new Date().getMonth())
     .reduce((sum, t) => sum + Number(t.amount), 0);
+
+  const filteredTransactions = transactions.filter((tx) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      (tx.description || "").toLowerCase().includes(q) ||
+      getPaymentMethodLabel(tx.payment_method, t).toLowerCase().includes(q) ||
+      (tx.type === "income" ? t("studio.finance.income") : tx.type === "expense" ? t("studio.finance.expense") : t("studio.finance.refund")).toLowerCase().includes(q) ||
+      String(Number(tx.amount)).includes(q) ||
+      (tx.studio_clients?.name || "").toLowerCase().includes(q) ||
+      (tx.studio_clients?.car_make || "").toLowerCase().includes(q) ||
+      (tx.studio_clients?.car_model || "").toLowerCase().includes(q) ||
+      (tx.studio_clients?.license_plate || "").toLowerCase().includes(q) ||
+      (tx.studio_appointments?.studio_services?.name || "").toLowerCase().includes(q)
+    );
+  });
 
   if (loading) {
     return (
@@ -201,10 +220,21 @@ export default function StudioFinancePage() {
         </Card>
       )}
 
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+        <input
+          type="text"
+          placeholder={t("studio.finance.search")}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-primary/50 transition-colors"
+        />
+      </div>
+
       <Card>
         <CardContent className="p-0">
-          {transactions.length === 0 ? (
-            <p className="text-sm text-zinc-500 text-center py-12">{t("studio.finance.empty")}</p>
+          {filteredTransactions.length === 0 ? (
+            <p className="text-sm text-zinc-500 text-center py-12">{search ? t("studio.list.no_results") : t("studio.finance.empty")}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -212,39 +242,59 @@ export default function StudioFinancePage() {
                   <tr className="border-b border-zinc-800">
                     <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.date")}</th>
                     <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.type_col")}</th>
+                    <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.source_col")}</th>
                     <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.desc_col")}</th>
                     <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.method_col")}</th>
                     <th className="text-right p-4 text-zinc-400 font-medium">{t("studio.finance.amount_col")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {transactions.map((tx) => (
-                    <tr key={tx.id} className="border-b border-zinc-800/50">
-                      <td className="p-4 text-zinc-500">{formatDate(tx.created_at)}</td>
-                      <td className="p-4">
-                        <span
-                          className={
-                            tx.type === "income"
-                              ? "text-emerald-400 flex items-center gap-1.5"
-                              : "text-accent flex items-center gap-1.5"
-                          }
+                  {filteredTransactions.map((tx) => {
+                    const client = tx.studio_clients;
+                    const service = tx.studio_appointments?.studio_services?.name;
+                    const car = [client?.car_make, client?.car_model].filter(Boolean).join(" ");
+                    return (
+                      <tr key={tx.id} className="border-b border-zinc-800/50">
+                        <td className="p-4 text-zinc-500 whitespace-nowrap">{formatDate(tx.created_at)}</td>
+                        <td className="p-4">
+                          <span
+                            className={
+                              tx.type === "income"
+                                ? "text-emerald-400 flex items-center gap-1.5"
+                                : "text-accent flex items-center gap-1.5"
+                            }
+                          >
+                            {tx.type === "income" ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
+                            {tx.type === "income" ? t("studio.finance.income") : tx.type === "expense" ? t("studio.finance.expense") : t("studio.finance.refund")}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          {client ? (
+                            <div>
+                              <p className="text-zinc-200 font-medium">{client.name}</p>
+                              <p className="text-xs text-zinc-500">
+                                {[car, client.license_plate, client.phone].filter(Boolean).join(" · ") || "—"}
+                              </p>
+                            </div>
+                          ) : service ? (
+                            <p className="text-zinc-200">{service}</p>
+                          ) : (
+                            <p className="text-zinc-500">{getCategoryLabel(tx.category, t)}</p>
+                          )}
+                        </td>
+                        <td className="p-4 text-zinc-300">{tx.description || "—"}</td>
+                        <td className="p-4 text-zinc-500">{getPaymentMethodLabel(tx.payment_method, t)}</td>
+                        <td
+                          className={`p-4 text-right font-medium whitespace-nowrap ${
+                            tx.type === "income" ? "text-emerald-400" : "text-accent"
+                          }`}
                         >
-                          {tx.type === "income" ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
-                          {tx.type === "income" ? t("studio.finance.income") : tx.type === "expense" ? t("studio.finance.expense") : t("studio.finance.refund")}
-                        </span>
-                      </td>
-                      <td className="p-4 text-zinc-300">{tx.description || "—"}</td>
-                      <td className="p-4 text-zinc-500">{getPaymentMethodLabel(tx.payment_method, t)}</td>
-                      <td
-                        className={`p-4 text-right font-medium ${
-                          tx.type === "income" ? "text-emerald-400" : "text-accent"
-                        }`}
-                      >
-                        {tx.type === "income" ? "+" : "−"}
-                        {formatCurrency(Number(tx.amount))}
-                      </td>
-                    </tr>
-                  ))}
+                          {tx.type === "income" ? "+" : "−"}
+                          {formatCurrency(Number(tx.amount))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

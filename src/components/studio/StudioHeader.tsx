@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Search } from "lucide-react";
+import { Bell } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
@@ -38,18 +38,7 @@ export default function StudioHeader({ slug }: StudioHeaderProps) {
   }, [slug]);
 
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between px-8 py-4 bg-dashboard-bg/80 backdrop-blur-xl border-b border-zinc-800/50">
-      <div className="flex items-center gap-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-          <input
-            type="text"
-            placeholder={t("studio.header.search")}
-            className="w-96 pl-10 pr-4 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-primary/50 transition-colors"
-          />
-        </div>
-      </div>
-
+    <header className="sticky top-0 z-40 flex items-center justify-end px-8 py-4 bg-dashboard-bg/80 backdrop-blur-xl border-b border-zinc-800/50">
       <div className="flex items-center gap-4">
         <div className="relative">
           <button

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import { Plus, Edit, Trash2, Scissors } from "lucide-react";
+import { Plus, Edit, Trash2, Scissors, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +22,7 @@ export default function StudioServicesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -130,6 +131,16 @@ export default function StudioServicesPage() {
     setShowForm(true);
   };
 
+  const filteredServices = services.filter((s) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      s.name.toLowerCase().includes(q) ||
+      (s.description || "").toLowerCase().includes(q) ||
+      getCategoryLabel(s.category, t).toLowerCase().includes(q)
+    );
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -206,48 +217,59 @@ export default function StudioServicesPage() {
         </Card>
       )}
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {services.map((service) => (
-          <Card key={service.id}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Scissors className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-medium">{service.name}</h3>
-                    <Badge className="text-xs">{getCategoryLabel(service.category, t)}</Badge>
-                  </div>
-                </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => startEdit(service)}>
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(service.id)}>
-                    <Trash2 className="w-4 h-4 text-accent" />
-                  </Button>
-                </div>
-              </div>
-              {service.description && (
-                <p className="text-sm text-zinc-400 mb-4 line-clamp-2">{service.description}</p>
-              )}
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-500">{service.duration_minutes} {t("studio.services.min")}</span>
-                <span className="text-lg font-bold text-primary">{formatCurrency(service.price)}</span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+        <input
+          type="text"
+          placeholder={t("studio.services.search")}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-primary/50 transition-colors"
+        />
       </div>
 
-      {services.length === 0 && !showForm && (
-        <div className="text-center py-12">
-          <Scissors className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
-          <p className="text-zinc-500">{t("studio.services.empty")}</p>
-          <p className="text-sm text-zinc-600 mt-1">{t("studio.services.empty_desc")}</p>
-        </div>
-      )}
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredServices.length === 0 ? (
+          <div className="md:col-span-2 lg:col-span-3 text-center py-12">
+            <Scissors className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
+            <p className="text-zinc-500">{search ? t("studio.list.no_results") : t("studio.services.empty")}</p>
+            {!search && <p className="text-sm text-zinc-600 mt-1">{t("studio.services.empty_desc")}</p>}
+          </div>
+        ) : (
+          filteredServices.map((service) => (
+            <Card key={service.id}>
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Scissors className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium">{service.name}</h3>
+                      <Badge className="text-xs">{getCategoryLabel(service.category, t)}</Badge>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => startEdit(service)}>
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(service.id)}>
+                      <Trash2 className="w-4 h-4 text-accent" />
+                    </Button>
+                  </div>
+                </div>
+                {service.description && (
+                  <p className="text-sm text-zinc-400 mb-4 line-clamp-2">{service.description}</p>
+                )}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-zinc-500">{service.duration_minutes} {t("studio.services.min")}</span>
+                  <span className="text-lg font-bold text-primary">{formatCurrency(service.price)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   );
 }
