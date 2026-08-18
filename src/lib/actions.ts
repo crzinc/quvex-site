@@ -10,6 +10,12 @@ interface QuizSubmission {
 export async function submitQuiz(data: QuizSubmission) {
   const supabase = createServiceClient();
 
+  const budgetValue =
+    data.answers.budget === "0-100" ? 50
+    : data.answers.budget === "100-300" ? 200
+    : data.answers.budget === "300-600" ? 450
+    : 800;
+
   const { data: client, error: clientError } = await supabase
     .from("clients")
     .insert({
@@ -20,10 +26,7 @@ export async function submitQuiz(data: QuizSubmission) {
       status: "lead",
       source: "Квиз",
       description: `Тип бизнеса: ${data.answers.business_type}\nПотребность: ${data.answers.needs}\nБюджет: ${data.answers.budget}\nСрок: ${data.answers.timeline}`,
-      budget: data.answers.budget === "500-2000" ? 1000
-        : data.answers.budget === "2000-5000" ? 3500
-        : data.answers.budget === "5000-15000" ? 10000
-        : 20000,
+      budget: budgetValue,
       quiz_results: {
         business_type: data.answers.business_type,
         needs: [data.answers.needs],
@@ -43,7 +46,7 @@ export async function submitQuiz(data: QuizSubmission) {
 
   const { error: notifError } = await supabase.from("notifications").insert({
     title: "Новый лид с квиза",
-    message: `${data.contact.name} — ${data.answers.needs}, бюджет ${data.answers.budget}`,
+    message: `${data.contact.name} — ${data.answers.needs}, бюджет ${data.answers.budget} ₼/мес`,
     type: "quiz",
     client_id: client.id,
   });

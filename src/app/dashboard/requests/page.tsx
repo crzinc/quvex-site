@@ -6,7 +6,7 @@ import { Mail, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getStatusColor, getStatusLabel, formatDate, formatCurrency, getInitials } from "@/lib/utils";
+import { getStatusColor, getStatusLabel, formatDate, formatCurrency, getInitials, getQuizBudgetLabel } from "@/lib/utils";
 import { useT } from "@/i18n/I18nProvider";
 import type { Client } from "@/types";
 
@@ -94,7 +94,7 @@ export default function DashboardRequestsPage() {
                         </div>
                       </td>
                       <td className="p-4 text-zinc-400">{request.source || "—"}</td>
-                      <td className="p-4 text-zinc-300">{request.budget ? formatCurrency(request.budget) : "—"}</td>
+                      <td className="p-4 text-zinc-300">{request.quiz_results?.budget ? getQuizBudgetLabel(request.quiz_results.budget, t) : request.budget ? formatCurrency(request.budget) : "—"}</td>
                       <td className="p-4">
                         <Badge className={getStatusColor(request.status)}>
                           {getStatusLabel(request.status, t)}

@@ -38,10 +38,10 @@ const questions = [
     id: "budget",
     question: "quiz.q3_question",
     options: [
-      { value: "500-2000", label: "quiz.q3_opt1" },
-      { value: "2000-5000", label: "quiz.q3_opt2" },
-      { value: "5000-15000", label: "quiz.q3_opt3" },
-      { value: "15000plus", label: "quiz.q3_opt4" },
+      { value: "0-100", label: "quiz.q3_opt1" },
+      { value: "100-300", label: "quiz.q3_opt2" },
+      { value: "300-600", label: "quiz.q3_opt3" },
+      { value: "600plus", label: "quiz.q3_opt4" },
     ],
   },
   {

@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getStatusColor, formatDate, formatCurrency, getInitials } from "@/lib/utils";
+import { getStatusColor, formatDate, formatCurrency, getInitials, getQuizBudgetLabel } from "@/lib/utils";
 import { useT } from "@/i18n/I18nProvider";
 import type { Client } from "@/types";
 
@@ -81,7 +81,7 @@ export default function ClientsPage() {
                       <td className="p-4">
                         <Badge className={getStatusColor(client.status)}>{t(`status.${client.status}`)}</Badge>
                       </td>
-                      <td className="p-4 text-zinc-300">{client.budget ? formatCurrency(client.budget) : "—"}</td>
+                      <td className="p-4 text-zinc-300">{client.quiz_results?.budget ? getQuizBudgetLabel(String(client.quiz_results.budget), t) : client.budget ? formatCurrency(client.budget) : "—"}</td>
                       <td className="p-4 text-zinc-500">{formatDate(client.created_at)}</td>
                       <td className="p-4">
                         <Link href={`/dashboard/clients/${client.id}`} className="text-sm text-primary hover:underline">{t("clients.open")}</Link>

@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { formatDate, formatCurrency, getQuizBudgetLabel } from "@/lib/utils";
 import { useT } from "@/i18n/I18nProvider";
 import ClientActions from "./ClientActions";
 import ClientNotes from "./ClientNotes";
@@ -91,7 +91,7 @@ export default function ClientDetailPage() {
                   </div>
                   <div className="flex items-center gap-3 text-sm">
                     <DollarSign className="w-4 h-4 text-zinc-500" />
-                    <span className="text-zinc-300">{client.budget ? formatCurrency(client.budget) : "—"}</span>
+                    <span className="text-zinc-300">{client.quiz_results?.budget ? getQuizBudgetLabel(String(client.quiz_results.budget), t) : client.budget ? formatCurrency(client.budget) : "—"}</span>
                   </div>
                   {client.source && (
                     <div className="flex items-center gap-3 text-sm">
@@ -143,7 +143,7 @@ export default function ClientDetailPage() {
               {client.quiz_results ? (
                 <div className="space-y-2 text-sm">
                   <p><span className="text-zinc-500">{t("client.quiz_business")}:</span> {client.quiz_results.business_type}</p>
-                  <p><span className="text-zinc-500">{t("client.quiz_budget")}:</span> {client.quiz_results.budget}</p>
+                  <p><span className="text-zinc-500">{t("client.quiz_budget")}:</span> {getQuizBudgetLabel(String(client.quiz_results.budget), t)}</p>
                   <p><span className="text-zinc-500">{t("client.quiz_timeline")}:</span> {client.quiz_results.timeline}</p>
                 </div>
               ) : (

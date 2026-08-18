@@ -115,6 +115,18 @@ export function getStatusLabel(status: string, t?: (key: string) => string) {
   }
 }
 
+export function getQuizBudgetLabel(value: string, t?: (key: string) => string) {
+  const budgetKeys: Record<string, string> = {
+    "0-100": "quiz.q3_opt1",
+    "100-300": "quiz.q3_opt2",
+    "300-600": "quiz.q3_opt3",
+    "600plus": "quiz.q3_opt4",
+  };
+  const key = budgetKeys[value];
+  if (t && key) return t(key);
+  return value;
+}
+
 export function getPaymentMethodLabel(method: string, t?: (key: string) => string) {
   if (t) return t(`payment_method.${method}`);
   switch (method) {
