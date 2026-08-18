@@ -15,14 +15,21 @@ const HeroScene = dynamic(
 export default function Hero() {
   const { t } = useT();
   const sectionRef = useRef<HTMLElement>(null);
-  const [active, setActive] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  });
+  const [active, setActive] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     if ("scrollRestoration" in history) history.scrollRestoration = "manual";
     window.scrollTo(0, 0);
+
+    const mq = window.matchMedia("(max-width: 768px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setActive(!reduced.matches);
+
     const el = sectionRef.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
 
@@ -32,12 +39,15 @@ export default function Hero() {
     );
     observer.observe(el);
 
-    return () => observer.disconnect();
+    return () => {
+      mq.removeEventListener("change", update);
+      observer.disconnect();
+    };
   }, []);
 
   return (
     <section ref={sectionRef} className="relative min-h-screen flex items-center overflow-hidden hero-grid">
-      <HeroScene active={active} />
+      {!isMobile && <HeroScene active={active} />}
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 lg:py-40">
         <div className="max-w-4xl">
