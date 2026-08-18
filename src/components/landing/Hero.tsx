@@ -15,8 +15,14 @@ const HeroScene = dynamic(
 export default function Hero() {
   const { t } = useT();
   const sectionRef = useRef<HTMLElement>(null);
-  const [active, setActive] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [active, setActive] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  });
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 768px)").matches;
+  });
 
   useEffect(() => {
     if ("scrollRestoration" in history) history.scrollRestoration = "manual";
@@ -24,17 +30,13 @@ export default function Hero() {
 
     const mq = window.matchMedia("(max-width: 768px)");
     const update = () => setIsMobile(mq.matches);
-    update();
     mq.addEventListener("change", update);
-
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setActive(!reduced.matches);
 
     const el = sectionRef.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
 
     const observer = new IntersectionObserver(
-      ([entry]) => setActive(entry.isIntersecting),
+      ([entry]) => setActive(entry.isIntersecting && !window.matchMedia("(prefers-reduced-motion: reduce)").matches),
       { threshold: 0.05 },
     );
     observer.observe(el);

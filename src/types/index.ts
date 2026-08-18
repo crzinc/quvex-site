@@ -48,6 +48,22 @@ export interface DashboardStats {
 }
 
 // Studio CRM Types
+export type SubscriptionStatus = "active" | "overdue" | "cancelled";
+export type SubscriptionPeriod = "monthly" | "quarterly" | "yearly";
+
+export interface Plan {
+  id: string;
+  created_at: string;
+  name: string;
+  code: "basic" | "standard" | "premium";
+  price_monthly: number;
+  price_quarterly: number;
+  price_yearly: number;
+  max_clients: number | null;
+  is_active: boolean;
+  sort_order: number;
+}
+
 export interface Studio {
   id: string;
   created_at: string;
@@ -60,7 +76,13 @@ export interface Studio {
   logo_url: string;
   is_active: boolean;
   settings: Record<string, unknown>;
+  plan_id: string | null;
+  subscription_status: SubscriptionStatus;
+  subscription_period: SubscriptionPeriod;
+  subscription_start: string | null;
+  subscription_end: string | null;
   updated_at: string;
+  plans?: Plan | null;
 }
 
 export interface UserStudio {

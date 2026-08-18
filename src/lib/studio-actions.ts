@@ -10,8 +10,8 @@ export interface StudioAccountInput {
   address?: string;
   description?: string;
   password?: string;
-  payment_amount?: number;
-  payment_method?: "cash" | "card" | "transfer" | "other";
+  plan_id?: string;
+  subscription_period?: "monthly" | "quarterly" | "yearly";
 }
 
 export interface StudioAccountResult {
@@ -68,6 +68,12 @@ function generatePassword(): string {
   return password;
 }
 
+const subscriptionMonths: Record<NonNullable<StudioAccountInput["subscription_period"]>, number> = {
+  monthly: 1,
+  quarterly: 3,
+  yearly: 12,
+};
+
 export async function createStudioAccount(input: StudioAccountInput): Promise<StudioAccountResult> {
   const supabase = createServiceClient();
 
@@ -77,6 +83,20 @@ export async function createStudioAccount(input: StudioAccountInput): Promise<St
   if (!name || !email) {
     return { error: "Укажите название студии и email владельца", studio_id: "", slug: "", name: "", owner_email: "", password: "" };
   }
+
+  const period = input.subscription_period || "monthly";
+
+  const { data: plan } = await supabase
+    .from("plans")
+    .select("*")
+    .eq("is_active", true)
+    .eq("id", input.plan_id || "")
+    .maybeSingle();
+
+  const planId = plan?.id ?? null;
+  const amount = plan
+    ? Number(period === "monthly" ? plan.price_monthly : period === "quarterly" ? plan.price_quarterly : plan.price_yearly)
+    : 0;
 
   let slug = transliterate(name) || "studio";
   const { data: existingBySlug } = await supabase
@@ -112,6 +132,10 @@ export async function createStudioAccount(input: StudioAccountInput): Promise<St
 
   const userId = userData.user.id;
 
+  const now = new Date();
+  const subscriptionStart = now.toISOString().slice(0, 10);
+  const subscriptionEnd = new Date(now.setMonth(now.getMonth() + subscriptionMonths[period])).toISOString().slice(0, 10);
+
   const { data: studio, error: studioError } = await supabase
     .from("studios")
     .insert({
@@ -121,6 +145,11 @@ export async function createStudioAccount(input: StudioAccountInput): Promise<St
       owner_phone: input.owner_phone || "",
       address: input.address || "",
       description: input.description || "",
+      plan_id: planId,
+      subscription_status: "active",
+      subscription_period: period,
+      subscription_start: subscriptionStart,
+      subscription_end: subscriptionEnd,
       settings: {
         primary_color: "#a855f7",
         primary_dark: "#7c3aed",
@@ -165,18 +194,13 @@ export async function createStudioAccount(input: StudioAccountInput): Promise<St
     console.error("Seed services error:", servicesError.message);
   }
 
-  const amount = input.payment_amount ?? 0;
-  const now = new Date();
-  const periodStart = now.toISOString().slice(0, 10);
-  const periodEnd = new Date(now.setMonth(now.getMonth() + 1)).toISOString().slice(0, 10);
-
   const { error: paymentError } = await supabase.from("payments").insert({
     studio_id: studio.id,
     amount,
     status: "paid",
-    period_start: periodStart,
-    period_end: periodEnd,
-    payment_method: input.payment_method || "cash",
+    period_start: subscriptionStart,
+    period_end: subscriptionEnd,
+    payment_method: "cash",
     notes: "Оплата при подключении",
     confirmed_at: new Date().toISOString(),
   });
@@ -192,6 +216,86 @@ export async function createStudioAccount(input: StudioAccountInput): Promise<St
     owner_email: email,
     password,
   };
+}
+
+export interface RenewSubscriptionResult {
+  ok: boolean;
+  error?: string;
+}
+
+export async function renewStudioSubscription(
+  studioId: string,
+  planId: string,
+  period: "monthly" | "quarterly" | "yearly",
+): Promise<RenewSubscriptionResult> {
+  const authClient = await createClient();
+  const { data: { user } } = await authClient.auth.getUser();
+  if (!user || user.app_metadata?.role !== "admin") {
+    return { ok: false, error: "Недостаточно прав" };
+  }
+
+  const supabase = createServiceClient();
+
+  const { data: plan, error: planError } = await supabase
+    .from("plans")
+    .select("*")
+    .eq("id", planId)
+    .maybeSingle();
+
+  if (planError || !plan) {
+    return { ok: false, error: "Тариф не найден" };
+  }
+
+  const months: Record<"monthly" | "quarterly" | "yearly", number> = { monthly: 1, quarterly: 3, yearly: 12 };
+  const amount = Number(period === "monthly" ? plan.price_monthly : period === "quarterly" ? plan.price_quarterly : plan.price_yearly);
+
+  const { data: studio, error: studioError } = await supabase
+    .from("studios")
+    .select("id, subscription_end")
+    .eq("id", studioId)
+    .maybeSingle();
+
+  if (studioError || !studio) {
+    return { ok: false, error: "Студия не найдена" };
+  }
+
+  const base = new Date();
+  const existingEnd = studio.subscription_end ? new Date(studio.subscription_end) : null;
+  if (existingEnd && existingEnd > base) base.setTime(existingEnd.getTime());
+  const periodStart = base.toISOString().slice(0, 10);
+  const periodEnd = new Date(base.setMonth(base.getMonth() + months[period])).toISOString().slice(0, 10);
+
+  const { error: paymentError } = await supabase.from("payments").insert({
+    studio_id: studioId,
+    amount,
+    status: "paid",
+    period_start: periodStart,
+    period_end: periodEnd,
+    payment_method: "cash",
+    notes: "Продление подписки",
+    confirmed_at: new Date().toISOString(),
+  });
+
+  if (paymentError) {
+    return { ok: false, error: `Не удалось создать платёж: ${paymentError.message}` };
+  }
+
+  const { error: updateError } = await supabase
+    .from("studios")
+    .update({
+      plan_id: planId,
+      subscription_status: "active",
+      subscription_period: period,
+      subscription_start: periodStart,
+      subscription_end: periodEnd,
+    })
+    .eq("id", studioId);
+
+  if (updateError) {
+    return { ok: false, error: `Не удалось обновить подписку: ${updateError.message}` };
+  }
+
+  return { ok: true };
 }
 
 export interface DeleteStudioResult {

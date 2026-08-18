@@ -8,14 +8,15 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getStatusColor, getStatusLabel, formatCurrency, getInitials } from "@/lib/utils";
+import { getStatusColor, getStatusLabel, formatCurrency, getInitials, cn } from "@/lib/utils";
 import { useT } from "@/i18n/I18nProvider";
-import type { StudioClient } from "@/types";
+import type { StudioClient, Plan } from "@/types";
 
 export default function StudioClientsPage() {
   const params = useParams<{ slug: string }>();
   const { t } = useT();
   const [clients, setClients] = useState<StudioClient[]>([]);
+  const [plan, setPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const supabase = useRef(createClient());
@@ -24,19 +25,25 @@ export default function StudioClientsPage() {
     const fetchClients = async () => {
       const { data: studio } = await supabase.current
         .from("studios")
-        .select("id")
+        .select("id, plan_id")
         .eq("slug", params.slug)
         .single();
 
       if (!studio) return;
 
-      const { data } = await supabase.current
-        .from("studio_clients")
-        .select("*")
-        .eq("studio_id", studio.id)
-        .order("created_at", { ascending: false });
+      const [clientsResult, planResult] = await Promise.all([
+        supabase.current
+          .from("studio_clients")
+          .select("*")
+          .eq("studio_id", studio.id)
+          .order("created_at", { ascending: false }),
+        studio.plan_id
+          ? supabase.current.from("plans").select("*").eq("id", studio.plan_id).single()
+          : Promise.resolve({ data: null }),
+      ]);
 
-      if (data) setClients(data);
+      if (clientsResult.data) setClients(clientsResult.data);
+      if (planResult.data) setPlan(planResult.data);
       setLoading(false);
     };
 
@@ -51,6 +58,10 @@ export default function StudioClientsPage() {
       c.car_model.toLowerCase().includes(search.toLowerCase()) ||
       c.license_plate.toLowerCase().includes(search.toLowerCase())
   );
+
+  const maxClients = plan?.max_clients ?? null;
+  const limitReached = maxClients !== null && clients.length >= maxClients;
+  const usagePercent = maxClients ? Math.min(100, Math.round((clients.length / maxClients) * 100)) : 100;
 
   if (loading) {
     return (
@@ -67,12 +78,32 @@ export default function StudioClientsPage() {
           <h1 className="text-2xl font-bold mb-1">{t("studio.clients.title")}</h1>
           <p className="text-sm text-zinc-400">{clients.length} {t("studio.clients.subtitle")}</p>
         </div>
-        <Link href={`/studio/${params.slug}/clients/new`}>
+        <Link href={`/studio/${params.slug}/clients/new`} className={limitReached ? "pointer-events-none opacity-50" : undefined}>
           <Button>
             <Plus className="w-4 h-4" /> {t("studio.clients.new")}
           </Button>
         </Link>
       </div>
+
+      {maxClients !== null && (
+        <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-zinc-400">{t("subscription.clients_usage", { used: clients.length, max: maxClients })}</span>
+            <span className={cn("text-sm font-medium", limitReached ? "text-red-400" : "text-zinc-300")}>
+              {usagePercent}%
+            </span>
+          </div>
+          <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
+            <div
+              className={cn("h-full rounded-full transition-all", limitReached ? "bg-red-500" : "bg-primary")}
+              style={{ width: `${usagePercent}%` }}
+            />
+          </div>
+          {limitReached && (
+            <p className="text-xs text-red-400 mt-2">{t("subscription.clients_limit_reached")}</p>
+          )}
+        </div>
+      )}
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />

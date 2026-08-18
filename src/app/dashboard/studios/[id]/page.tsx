@@ -7,13 +7,19 @@ import { ArrowLeft, Users, Calendar, DollarSign, Trash2, AlertTriangle } from "l
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { deleteStudio } from "@/lib/studio-actions";
+import { deleteStudio, renewStudioSubscription } from "@/lib/studio-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getStatusColor, formatDate, formatCurrency, getStatusLabel } from "@/lib/utils";
+import { getStatusColor, formatDate, formatCurrency, getStatusLabel, cn } from "@/lib/utils";
 import { useT } from "@/i18n/I18nProvider";
-import type { Studio, StudioClient, StudioAppointment, Payment } from "@/types";
+import type { Studio, StudioClient, StudioAppointment, Payment, Plan, SubscriptionPeriod } from "@/types";
+
+const RENEW_PERIODS: { value: SubscriptionPeriod; labelKey: string }[] = [
+  { value: "monthly", labelKey: "subscription.period_monthly" },
+  { value: "quarterly", labelKey: "subscription.period_quarterly" },
+  { value: "yearly", labelKey: "subscription.period_yearly" },
+];
 
 export default function DashboardStudioDetailPage() {
   const params = useParams();
@@ -23,6 +29,10 @@ export default function DashboardStudioDetailPage() {
   const [clients, setClients] = useState<StudioClient[]>([]);
   const [appointments, setAppointments] = useState<(StudioAppointment & { studio_clients?: { name: string }; studio_services?: { name: string } })[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [renewPlanId, setRenewPlanId] = useState("");
+  const [renewPeriod, setRenewPeriod] = useState<SubscriptionPeriod>("monthly");
+  const [renewing, setRenewing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmName, setConfirmName] = useState("");
@@ -40,7 +50,7 @@ export default function DashboardStudioDetailPage() {
       if (studioData) {
         setStudio(studioData);
 
-        const [clientsResult, appointmentsResult, paymentsResult] = await Promise.all([
+        const [clientsResult, appointmentsResult, paymentsResult, plansResult] = await Promise.all([
           supabase.current
             .from("studio_clients")
             .select("*")
@@ -57,11 +67,19 @@ export default function DashboardStudioDetailPage() {
             .select("*")
             .eq("studio_id", studioData.id)
             .order("created_at", { ascending: false }),
+          supabase.current
+            .from("plans")
+            .select("*")
+            .order("sort_order"),
         ]);
 
         if (clientsResult.data) setClients(clientsResult.data);
         if (appointmentsResult.data) setAppointments(appointmentsResult.data);
         if (paymentsResult.data) setPayments(paymentsResult.data);
+        if (plansResult.data) {
+          setPlans(plansResult.data);
+          setRenewPlanId(studioData.plan_id || plansResult.data[0]?.id || "");
+        }
       }
       setLoading(false);
     };
@@ -78,6 +96,32 @@ export default function DashboardStudioDetailPage() {
     if (!error) {
       setPayments(payments.map((p) => p.id === paymentId ? { ...p, status: status as Payment["status"], confirmed_at: new Date().toISOString() } : p));
     }
+  };
+
+  const handleRenew = async () => {
+    if (!studio || !renewPlanId) return;
+    setRenewing(true);
+    const result = await renewStudioSubscription(studio.id, renewPlanId, renewPeriod);
+    setRenewing(false);
+
+    if (!result.ok) {
+      toast.error(result.error || "Ошибка продления");
+      return;
+    }
+
+    toast.success(t("subscription.renewed"));
+    const { data: studioData } = await supabase.current
+      .from("studios")
+      .select("*")
+      .eq("id", studio.id)
+      .single();
+    if (studioData) setStudio(studioData);
+    const { data: paymentsResult } = await supabase.current
+      .from("payments")
+      .select("*")
+      .eq("studio_id", studio.id)
+      .order("created_at", { ascending: false });
+    if (paymentsResult) setPayments(paymentsResult);
   };
 
   const handleDelete = async () => {
@@ -116,6 +160,13 @@ export default function DashboardStudioDetailPage() {
 
   const totalRevenue = payments.filter((p) => p.status === "paid").reduce((sum, p) => sum + p.amount, 0);
   const pendingPayments = payments.filter((p) => p.status === "pending");
+  const currentPlan = plans.find((p) => p.id === studio.plan_id);
+  const overdue = studio.subscription_end && new Date(studio.subscription_end) < new Date();
+  const renewPrice = (() => {
+    const plan = plans.find((p) => p.id === renewPlanId);
+    if (!plan) return 0;
+    return Number(renewPeriod === "monthly" ? plan.price_monthly : renewPeriod === "quarterly" ? plan.price_quarterly : plan.price_yearly);
+  })();
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -231,6 +282,77 @@ export default function DashboardStudioDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            {t("subscription.title")}
+            {overdue && (
+              <Badge className="bg-red-500/10 text-red-400 border-red-500/20">
+                {t("subscription.overdue")}
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-4 rounded-xl bg-zinc-800/50">
+              <p className="text-xs text-zinc-500 mb-1">{t("subscription.plan")}</p>
+              <p className="text-sm font-medium">{currentPlan?.name || "—"}</p>
+            </div>
+            <div className="p-4 rounded-xl bg-zinc-800/50">
+              <p className="text-xs text-zinc-500 mb-1">{t("subscription.period")}</p>
+              <p className="text-sm font-medium capitalize">{t(`subscription.period_${studio.subscription_period}`)}</p>
+            </div>
+            <div className="p-4 rounded-xl bg-zinc-800/50">
+              <p className="text-xs text-zinc-500 mb-1">{t("subscription.start")}</p>
+              <p className="text-sm font-medium">{studio.subscription_start ? formatDate(studio.subscription_start) : "—"}</p>
+            </div>
+            <div className="p-4 rounded-xl bg-zinc-800/50">
+              <p className="text-xs text-zinc-500 mb-1">{t("subscription.end")}</p>
+              <p className="text-sm font-medium">{studio.subscription_end ? formatDate(studio.subscription_end) : "—"}</p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 space-y-3">
+            <p className="text-sm font-medium">{t("subscription.renew_title")}</p>
+            <div className="grid sm:grid-cols-3 gap-3">
+              <select
+                value={renewPlanId}
+                onChange={(e) => setRenewPlanId(e.target.value)}
+                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-primary/50"
+              >
+                {plans.map((plan) => (
+                  <option key={plan.id} value={plan.id}>{plan.name}</option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                {RENEW_PERIODS.map((period) => (
+                  <button
+                    key={period.value}
+                    type="button"
+                    onClick={() => setRenewPeriod(period.value)}
+                    className={cn(
+                      "flex-1 px-3 py-2 rounded-xl border text-sm transition-all",
+                      renewPeriod === period.value
+                        ? "bg-primary/10 border-primary/40 text-white"
+                        : "bg-zinc-900/40 border-zinc-800 text-zinc-400 hover:border-zinc-700",
+                    )}
+                  >
+                    {t(period.labelKey)}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-3">
+                <p className="text-lg font-bold">{formatCurrency(renewPrice)}</p>
+                <Button onClick={handleRenew} loading={renewing} className="flex-shrink-0">
+                  {t("subscription.renew_btn")}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

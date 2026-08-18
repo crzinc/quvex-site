@@ -9,27 +9,39 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { useT } from "@/i18n/I18nProvider";
-import type { Studio } from "@/types";
+import type { Studio, Plan } from "@/types";
 
 export default function DashboardStudiosPage() {
   const [studios, setStudios] = useState<Studio[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = useRef(createClient());
   const { t } = useT();
 
   useEffect(() => {
     const fetchStudios = async () => {
-      const { data } = await supabase.current
-        .from("studios")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const [studiosResult, plansResult] = await Promise.all([
+        supabase.current
+          .from("studios")
+          .select("*")
+          .order("created_at", { ascending: false }),
+        supabase.current
+          .from("plans")
+          .select("*")
+          .order("sort_order"),
+      ]);
 
-      if (data) setStudios(data);
+      if (studiosResult.data) setStudios(studiosResult.data);
+      if (plansResult.data) setPlans(plansResult.data);
       setLoading(false);
     };
 
     fetchStudios();
   }, []);
+
+  const getPlan = (studio: Studio) => plans.find((p) => p.id === studio.plan_id);
+  const isOverdue = (studio: Studio) =>
+    studio.subscription_end && new Date(studio.subscription_end) < new Date();
 
   if (loading) {
     return (
@@ -67,6 +79,18 @@ export default function DashboardStudiosPage() {
                       <h3 className="font-medium">{studio.name}</h3>
                       <p className="text-xs text-zinc-500">/{studio.slug}</p>
                     </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5">
+                    {getPlan(studio) && (
+                      <Badge className="bg-primary/10 text-primary border-primary/20">
+                        {getPlan(studio)?.name}
+                      </Badge>
+                    )}
+                    {isOverdue(studio) && (
+                      <Badge className="bg-red-500/10 text-red-400 border-red-500/20">
+                        {t("subscription.overdue")}
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 <div className="space-y-2 text-sm">

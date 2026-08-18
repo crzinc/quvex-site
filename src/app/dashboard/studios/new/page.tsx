@@ -7,14 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { createStudioAccount, type StudioAccountInput } from "@/lib/studio-actions";
 import { useT } from "@/i18n/I18nProvider";
 import { createClient } from "@/lib/supabase/client";
 import { cn, getStatusColor, getStatusLabel, formatCurrency } from "@/lib/utils";
-import type { Client } from "@/types";
+import type { Client, Plan, SubscriptionPeriod } from "@/types";
+
+const PERIODS: { value: SubscriptionPeriod; labelKey: string; months: number; discount: number }[] = [
+  { value: "monthly", labelKey: "subscription.period_monthly", months: 1, discount: 0 },
+  { value: "quarterly", labelKey: "subscription.period_quarterly", months: 3, discount: 10 },
+  { value: "yearly", labelKey: "subscription.period_yearly", months: 12, discount: 20 },
+];
 
 function RequestPicker({
   requests,
@@ -109,6 +114,7 @@ export default function DashboardNewStudioPage() {
   const [requests, setRequests] = useState<Client[]>([]);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const supabase = useRef(createClient());
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [form, setForm] = useState({
     name: "",
     owner_email: "",
@@ -116,15 +122,24 @@ export default function DashboardNewStudioPage() {
     address: "",
     description: "",
     password: "",
-    payment_amount: "",
-    payment_method: "cash",
+    plan_id: "",
+    subscription_period: "monthly" as SubscriptionPeriod,
   });
 
   useEffect(() => {
+    supabase.current.from("plans").select("*").order("sort_order").then(({ data }) => {
+      if (data) setPlans(data as Plan[]);
+    });
     supabase.current.from("clients").select("*").order("created_at", { ascending: false }).then(({ data }) => {
       if (data) setRequests(data as unknown as Client[]);
     });
   }, []);
+
+  const selectedPlan = plans.find((p) => p.id === form.plan_id);
+  const selectedPeriod = PERIODS.find((p) => p.value === form.subscription_period)!;
+  const planPrice = selectedPlan
+    ? Number(selectedPlan[selectedPeriod.value === "monthly" ? "price_monthly" : selectedPeriod.value === "quarterly" ? "price_quarterly" : "price_yearly"])
+    : 0;
 
   const applyRequest = (client: Client | null) => {
     setSelectedRequestId(client?.id ?? null);
@@ -135,12 +150,15 @@ export default function DashboardNewStudioPage() {
       owner_email: client.email || "",
       owner_phone: client.phone || "",
       description: client.description || client.company || "",
-      payment_amount: client.budget ? String(client.budget) : "",
     });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.plan_id) {
+      toast.error(t("subscription.select_plan"));
+      return;
+    }
     setLoading(true);
 
     const input: StudioAccountInput = {
@@ -150,8 +168,8 @@ export default function DashboardNewStudioPage() {
       address: form.address,
       description: form.description,
       password: form.password || undefined,
-      payment_amount: form.payment_amount ? parseFloat(form.payment_amount) : undefined,
-      payment_method: form.payment_method as StudioAccountInput["payment_method"],
+      plan_id: form.plan_id,
+      subscription_period: form.subscription_period,
     };
 
     const res = await createStudioAccount(input);
@@ -306,42 +324,77 @@ export default function DashboardNewStudioPage() {
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={3}
             />
+            <Input
+              label={t("admin.studios.password")}
+              placeholder={t("admin.studios.password_placeholder")}
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+            />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>{t("admin.studios.payment_access")}</CardTitle>
+            <CardTitle>{t("subscription.title")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label={t("admin.studios.payment_amount")}
-                type="number"
-                placeholder={t("admin.studios.payment_amount_placeholder")}
-                value={form.payment_amount}
-                onChange={(e) => setForm({ ...form, payment_amount: e.target.value })}
-              />
+            <div className="grid sm:grid-cols-3 gap-4">
+              {plans.map((plan) => (
+                <button
+                  key={plan.id}
+                  type="button"
+                  onClick={() => setForm({ ...form, plan_id: plan.id })}
+                  className={cn(
+                    "text-left p-4 rounded-xl border transition-all duration-200",
+                    form.plan_id === plan.id
+                      ? "bg-primary/10 border-primary/40 ring-1 ring-primary/25"
+                      : "bg-zinc-900/40 border-zinc-800 hover:border-zinc-700",
+                  )}
+                >
+                  <p className="font-medium mb-1">{plan.name}</p>
+                  <p className="text-xs text-zinc-500 mb-3">{t("subscription.max_clients_label")}: {plan.max_clients ? plan.max_clients : "∞"}</p>
+                  <p className="text-lg font-bold text-primary">{formatCurrency(plan.price_monthly)}<span className="text-xs text-zinc-500 font-normal"> / {t("subscription.month")}</span></p>
+                </button>
+              ))}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Select
-                label={t("admin.studios.payment_method")}
-                value={form.payment_method}
-                onChange={(value) => setForm({ ...form, payment_method: value })}
-                options={[
-                  { value: "cash", label: t("payment_method.cash") },
-                  { value: "transfer", label: t("payment_method.transfer") },
-                  { value: "card", label: t("payment_method.card") },
-                  { value: "other", label: t("payment_method.other") },
-                ]}
-              />
-              <Input
-                label={t("admin.studios.password")}
-                placeholder={t("admin.studios.password_placeholder")}
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-              />
+
+            <div>
+              <p className="text-sm font-medium mb-2">{t("subscription.period_title")}</p>
+              <div className="grid sm:grid-cols-3 gap-3">
+                {PERIODS.map((period) => (
+                  <button
+                    key={period.value}
+                    type="button"
+                    onClick={() => setForm({ ...form, subscription_period: period.value })}
+                    className={cn(
+                      "text-left p-3 rounded-xl border transition-all duration-200",
+                      form.subscription_period === period.value
+                        ? "bg-primary/10 border-primary/40 ring-1 ring-primary/25"
+                        : "bg-zinc-900/40 border-zinc-800 hover:border-zinc-700",
+                    )}
+                  >
+                    <p className="text-sm font-medium">{t(period.labelKey)}</p>
+                    <p className="text-xs text-zinc-500">
+                      {period.discount > 0
+                        ? t("subscription.save", { discount: period.discount })
+                        : `${period.months} ${t("subscription.month")}`}
+                    </p>
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {selectedPlan && (
+              <div className="p-4 rounded-xl bg-zinc-800/50 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">{t("subscription.payable")}</p>
+                  <p className="text-xs text-zinc-500">
+                    {selectedPlan.name} · {t(selectedPeriod.labelKey)}
+                  </p>
+                </div>
+                <p className="text-xl font-bold">{formatCurrency(planPrice)}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

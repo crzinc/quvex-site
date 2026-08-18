@@ -39,7 +39,7 @@ export default function StudioNewClientPage() {
 
     const { data: studio } = await supabase.current
       .from("studios")
-      .select("id")
+      .select("id, plan_id")
       .eq("slug", params.slug)
       .single();
 
@@ -47,6 +47,24 @@ export default function StudioNewClientPage() {
       toast.error(t("studio.client.studio_not_found"));
       setLoading(false);
       return;
+    }
+
+    if (studio.plan_id) {
+      const [planResult, countResult] = await Promise.all([
+        supabase.current.from("plans").select("max_clients").eq("id", studio.plan_id).single(),
+        supabase.current
+          .from("studio_clients")
+          .select("id", { count: "exact", head: true })
+          .eq("studio_id", studio.id),
+      ]);
+
+      const maxClients = planResult.data?.max_clients;
+      const current = countResult.count ?? 0;
+      if (maxClients !== null && maxClients !== undefined && current >= maxClients) {
+        toast.error(t("subscription.clients_limit_reached"));
+        setLoading(false);
+        return;
+      }
     }
 
     const { error } = await supabase.current.from("studio_clients").insert({

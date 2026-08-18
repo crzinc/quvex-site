@@ -65,6 +65,20 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 -- MULTI-TENANT TABLES (Studio CRM)
 -- =============================================
 
+-- Тарифные планы подписки
+CREATE TABLE IF NOT EXISTS public.plans (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  name TEXT NOT NULL,
+  code TEXT UNIQUE NOT NULL,
+  price_monthly NUMERIC NOT NULL DEFAULT 0,
+  price_quarterly NUMERIC NOT NULL DEFAULT 0,
+  price_yearly NUMERIC NOT NULL DEFAULT 0,
+  max_clients INTEGER,
+  is_active BOOLEAN DEFAULT true,
+  sort_order INTEGER DEFAULT 0
+);
+
 -- Студии (арендаторы / подписчики)
 CREATE TABLE IF NOT EXISTS public.studios (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -78,8 +92,21 @@ CREATE TABLE IF NOT EXISTS public.studios (
   logo_url TEXT DEFAULT '',
   is_active BOOLEAN DEFAULT true,
   settings JSONB DEFAULT '{}'::jsonb,
+  plan_id UUID REFERENCES public.plans(id),
+  subscription_status TEXT DEFAULT 'active' CHECK (subscription_status IN ('active', 'overdue', 'cancelled')),
+  subscription_period TEXT DEFAULT 'monthly' CHECK (subscription_period IN ('monthly', 'quarterly', 'yearly')),
+  subscription_start DATE,
+  subscription_end DATE,
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Seed тарифных планов (игнорируем, если уже существуют)
+INSERT INTO public.plans (name, code, price_monthly, price_quarterly, price_yearly, max_clients, sort_order)
+VALUES
+  ('Базовый', 'basic', 50, 135, 480, 50, 1),
+  ('Стандарт', 'standard', 100, 270, 960, 200, 2),
+  ('Премиум', 'premium', 200, 540, 1920, NULL, 3)
+ON CONFLICT (code) DO NOTHING;
 
 -- Привязка пользователей к студиям
 CREATE TABLE IF NOT EXISTS public.user_studios (
@@ -225,6 +252,7 @@ CREATE INDEX IF NOT EXISTS idx_notifications_read ON public.notifications(read);
 CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_studios_slug ON public.studios(slug);
+CREATE INDEX IF NOT EXISTS idx_studios_plan_id ON public.studios(plan_id);
 CREATE INDEX IF NOT EXISTS idx_user_studios_user_id ON public.user_studios(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_studios_studio_id ON public.user_studios(studio_id);
 CREATE INDEX IF NOT EXISTS idx_studio_clients_studio_id ON public.studio_clients(studio_id);
@@ -246,6 +274,7 @@ CREATE INDEX IF NOT EXISTS idx_payments_status ON public.payments(status);
 ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.studios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_studios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.studio_clients ENABLE ROW LEVEL SECURITY;
@@ -311,6 +340,23 @@ DROP POLICY IF EXISTS "Quvex admin can update notifications" ON public.notificat
 CREATE POLICY "Quvex admin can update notifications"
   ON public.notifications FOR UPDATE TO authenticated
   USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+
+-- ---------- PLANS ----------
+
+DROP POLICY IF EXISTS "All authenticated can read plans" ON public.plans;
+CREATE POLICY "All authenticated can read plans"
+  ON public.plans FOR SELECT TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "Service can create plans" ON public.plans;
+CREATE POLICY "Service can create plans"
+  ON public.plans FOR INSERT TO service_role WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Admin can manage plans" ON public.plans;
+CREATE POLICY "Admin can manage plans"
+  ON public.plans FOR ALL TO authenticated
+  USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
+  WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
 
 -- ---------- STUDIOS ----------
 

@@ -16,7 +16,7 @@ const allMessages: Record<Locale, Record<string, string>> = {
 interface I18nContextType {
   locale: Locale;
   setLocale: (locale: Locale) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 const I18nContext = createContext<I18nContextType>({
@@ -48,7 +48,15 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback(
-    (key: string) => messages[key] || allMessages.ru[key] || key,
+    (key: string, params?: Record<string, string | number>) => {
+      let str = messages[key] || allMessages.ru[key] || key;
+      if (params) {
+        for (const [k, v] of Object.entries(params)) {
+          str = str.replace(`{${k}}`, String(v));
+        }
+      }
+      return str;
+    },
     [messages],
   );
 
