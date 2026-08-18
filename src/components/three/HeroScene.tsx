@@ -1,33 +1,53 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Float, MeshDistortMaterial } from "@react-three/drei";
+import { useGLTF, Float } from "@react-three/drei";
 import * as THREE from "three";
 
-function TorusKnot() {
-  const meshRef = useRef<THREE.Mesh>(null);
+useGLTF.preload("/models/toy_car_opt.glb");
+
+function Car() {
+  const groupRef = useRef<THREE.Group>(null);
+  const { scene } = useGLTF("/models/toy_car_opt.glb");
+
+  useEffect(() => {
+    scene.traverse((obj) => {
+      if (!(obj as THREE.Mesh).isMesh) return;
+      const mesh = obj as THREE.Mesh;
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      for (const mat of materials) {
+        const m = mat as THREE.MeshStandardMaterial;
+        if (m.name === "Glass") {
+          m.color.set("#22d3ee");
+          m.metalness = 0.1;
+          m.roughness = 0.05;
+          m.emissive.set("#06b6d4");
+          m.emissiveIntensity = 0.25;
+          m.transparent = true;
+          m.opacity = 0.9;
+        } else {
+          m.color.set("#c084fc");
+          m.metalness = 0.7;
+          m.roughness = 0.3;
+          m.emissive.set("#a855f7");
+          m.emissiveIntensity = 0.35;
+        }
+      }
+    });
+  }, [scene]);
 
   useFrame((state) => {
-    if (!meshRef.current) return;
-    meshRef.current.rotation.x = state.clock.elapsedTime * 0.1;
-    meshRef.current.rotation.y = state.clock.elapsedTime * 0.15;
+    if (!groupRef.current) return;
+    groupRef.current.rotation.y = state.clock.elapsedTime * 0.35;
+    groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.6) * 0.12;
   });
 
   return (
-    <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.5}>
-      <mesh ref={meshRef} scale={1.2}>
-        <torusKnotGeometry args={[1, 0.3, 64, 10]} />
-        <MeshDistortMaterial
-          color="#a855f7"
-          emissive="#a855f7"
-          emissiveIntensity={0.2}
-          roughness={0.2}
-          metalness={0.8}
-          distort={0.1}
-          speed={2}
-        />
-      </mesh>
+    <Float speed={1.2} rotationIntensity={0.05} floatIntensity={0.3}>
+      <group ref={groupRef} scale={55} rotation={[0, Math.PI / 2, 0]}>
+        <primitive object={scene} />
+      </group>
     </Float>
   );
 }
@@ -74,13 +94,14 @@ export default function HeroScene({ active = true }: { active?: boolean }) {
       <Canvas
         frameloop={active ? "always" : "never"}
         dpr={[1, 1.75]}
-        camera={{ position: [0, 0, 5], fov: 45 }}
+        camera={{ position: [0, 0, 6], fov: 45 }}
         gl={{ powerPreference: "high-performance", antialias: true }}
       >
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[5, 5, 5]} intensity={1} />
-        <pointLight position={[-5, -5, 5]} intensity={0.5} color="#06b6d4" />
-        <TorusKnot />
+        <ambientLight intensity={0.7} />
+        <directionalLight position={[5, 5, 5]} intensity={1.6} />
+        <pointLight position={[-5, -5, 5]} intensity={0.8} color="#06b6d4" />
+        <pointLight position={[0, 2, 3]} intensity={0.8} color="#c084fc" />
+        <Car />
         <Particles />
       </Canvas>
     </div>

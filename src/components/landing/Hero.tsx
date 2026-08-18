@@ -21,6 +21,8 @@ export default function Hero() {
   });
 
   useEffect(() => {
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    window.scrollTo(0, 0);
     const el = sectionRef.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ExternalLink, Building2, Monitor, GraduationCap } from "lucide-react";
+import { Building2, Monitor, GraduationCap } from "lucide-react";
 import { useT } from "@/i18n/I18nProvider";
 
 const projectKeys = [
@@ -66,9 +66,6 @@ export default function Portfolio() {
                     {t(tag)}
                   </span>
                 ))}
-              </div>
-              <div className="flex items-center gap-1 text-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                {t("portfolio.details")} <ExternalLink className="w-3 h-3" />
               </div>
             </motion.div>
           ))}
