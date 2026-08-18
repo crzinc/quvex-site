@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useGLTF, Float } from "@react-three/drei";
+import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
 useGLTF.preload("/models/toy_car_opt.glb");
@@ -44,16 +44,14 @@ function Car() {
   });
 
   return (
-    <Float speed={1.2} rotationIntensity={0.05} floatIntensity={0.3}>
-      <group ref={groupRef} scale={55} rotation={[0, Math.PI / 2, 0]}>
-        <primitive object={scene} />
-      </group>
-    </Float>
+    <group ref={groupRef} scale={55} rotation={[0, Math.PI / 2, 0]}>
+      <primitive object={scene} />
+    </group>
   );
 }
 
 function createParticleGeometry() {
-  const count = 1200;
+  const count = 600;
   const positions = new Float32Array(count * 3);
   for (let i = 0; i < count; i++) {
     positions[i * 3] = (Math.random() - 0.5) * 30;
@@ -93,14 +91,14 @@ export default function HeroScene({ active = true }: { active?: boolean }) {
     <div className="absolute inset-0 z-0">
       <Canvas
         frameloop={active ? "always" : "never"}
-        dpr={[1, 1.75]}
+        dpr={[1, 1.5]}
         camera={{ position: [0, 0, 6], fov: 45 }}
-        gl={{ powerPreference: "high-performance", antialias: true }}
+        gl={{ powerPreference: "high-performance", antialias: false }}
+        performance={{ min: 0.6 }}
       >
-        <ambientLight intensity={0.7} />
-        <directionalLight position={[5, 5, 5]} intensity={1.6} />
-        <pointLight position={[-5, -5, 5]} intensity={0.8} color="#06b6d4" />
-        <pointLight position={[0, 2, 3]} intensity={0.8} color="#c084fc" />
+        <ambientLight intensity={0.8} />
+        <directionalLight position={[5, 5, 5]} intensity={1.5} />
+        <pointLight position={[0, 2, 3]} intensity={1.1} color="#c084fc" />
         <Car />
         <Particles />
       </Canvas>
