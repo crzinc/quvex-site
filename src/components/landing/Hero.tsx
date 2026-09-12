@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Building2, Users, TrendingUp, Zap } from "lucide-react";
+import { ArrowRight, CalendarCheck, Bell, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/I18nProvider";
 import dynamic from "next/dynamic";
@@ -59,7 +59,6 @@ export default function Hero() {
             transition={{ duration: 0.6 }}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm text-primary mb-8"
           >
-            <Zap className="w-4 h-4" />
             {t("hero.badge")}
           </motion.div>
 
@@ -89,14 +88,14 @@ export default function Hero() {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="flex flex-col sm:flex-row gap-4"
           >
-            <a href="#quiz">
-              <Button size="lg" className="group">
+            <a href="#quiz" className="w-full sm:w-auto">
+              <Button size="lg" className="group w-full sm:w-auto">
                 {t("hero.quiz_btn")}
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </a>
-            <a href="#portfolio">
-              <Button variant="outline" size="lg">{t("hero.portfolio_btn")}</Button>
+            <a href="#pricing" className="w-full sm:w-auto">
+              <Button variant="outline" size="lg" className="w-full sm:w-auto">{t("hero.pricing_btn")}</Button>
             </a>
           </motion.div>
 
@@ -104,34 +103,25 @@ export default function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.5 }}
-            className="flex flex-wrap gap-8 mt-16 pt-8 border-t border-zinc-800/50"
+            className="flex flex-wrap gap-x-8 gap-y-4 mt-16 pt-8 border-t border-zinc-800/50"
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-emerald-400" />
+                <CalendarCheck className="w-5 h-5 text-emerald-400" />
               </div>
-              <div>
-                <p className="text-sm font-medium">{t("hero.stat_projects")}</p>
-                <p className="text-xs text-zinc-500">{t("hero.stat_projects_label")}</p>
-              </div>
+              <p className="text-sm text-zinc-300 max-w-[220px]">{t("hero.trust1")}</p>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                <Users className="w-5 h-5 text-blue-400" />
+                <Bell className="w-5 h-5 text-blue-400" />
               </div>
-              <div>
-                <p className="text-sm font-medium">{t("hero.stat_clients")}</p>
-                <p className="text-xs text-zinc-500">{t("hero.stat_clients_label")}</p>
-              </div>
+              <p className="text-sm text-zinc-300 max-w-[220px]">{t("hero.trust2")}</p>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-purple-400" />
+                <Users className="w-5 h-5 text-purple-400" />
               </div>
-              <div>
-                <p className="text-sm font-medium">{t("hero.stat_conversion")}</p>
-                <p className="text-xs text-zinc-500">{t("hero.stat_conversion_label")}</p>
-              </div>
+              <p className="text-sm text-zinc-300 max-w-[220px]">{t("hero.trust3")}</p>
             </div>
           </motion.div>
         </div>

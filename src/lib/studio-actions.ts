@@ -11,7 +11,7 @@ export interface StudioAccountInput {
   description?: string;
   password?: string;
   plan_id?: string;
-  subscription_period?: "monthly" | "quarterly" | "yearly";
+  subscription_period?: "monthly" | "quarterly" | "yearly" | "trial";
 }
 
 export interface StudioAccountResult {
@@ -72,6 +72,7 @@ const subscriptionMonths: Record<NonNullable<StudioAccountInput["subscription_pe
   monthly: 1,
   quarterly: 3,
   yearly: 12,
+  trial: 0,
 };
 
 export async function createStudioAccount(input: StudioAccountInput): Promise<StudioAccountResult> {
@@ -94,9 +95,12 @@ export async function createStudioAccount(input: StudioAccountInput): Promise<St
     .maybeSingle();
 
   const planId = plan?.id ?? null;
-  const amount = plan
-    ? Number(period === "monthly" ? plan.price_monthly : period === "quarterly" ? plan.price_quarterly : plan.price_yearly)
-    : 0;
+  const isTrial = plan?.code === "trial" || period === "trial";
+  const amount = isTrial
+    ? 0
+    : plan
+      ? Number(period === "monthly" ? plan.price_monthly : period === "quarterly" ? plan.price_quarterly : plan.price_yearly)
+      : 0;
 
   let slug = transliterate(name) || "studio";
   const { data: existingBySlug } = await supabase
@@ -134,7 +138,11 @@ export async function createStudioAccount(input: StudioAccountInput): Promise<St
 
   const now = new Date();
   const subscriptionStart = now.toISOString().slice(0, 10);
-  const subscriptionEnd = new Date(now.setMonth(now.getMonth() + subscriptionMonths[period])).toISOString().slice(0, 10);
+  const trialDays = 3;
+  const effectivePeriod = isTrial ? "trial" : period;
+  const subscriptionEnd = isTrial
+    ? new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    : new Date(now.setMonth(now.getMonth() + subscriptionMonths[period])).toISOString().slice(0, 10);
 
   const { data: studio, error: studioError } = await supabase
     .from("studios")
@@ -147,7 +155,7 @@ export async function createStudioAccount(input: StudioAccountInput): Promise<St
       description: input.description || "",
       plan_id: planId,
       subscription_status: "active",
-      subscription_period: period,
+      subscription_period: effectivePeriod,
       subscription_start: subscriptionStart,
       subscription_end: subscriptionEnd,
       settings: {
@@ -194,19 +202,21 @@ export async function createStudioAccount(input: StudioAccountInput): Promise<St
     console.error("Seed services error:", servicesError.message);
   }
 
-  const { error: paymentError } = await supabase.from("payments").insert({
-    studio_id: studio.id,
-    amount,
-    status: "paid",
-    period_start: subscriptionStart,
-    period_end: subscriptionEnd,
-    payment_method: "cash",
-    notes: "Оплата при подключении",
-    confirmed_at: new Date().toISOString(),
-  });
+  if (!isTrial) {
+    const { error: paymentError } = await supabase.from("payments").insert({
+      studio_id: studio.id,
+      amount,
+      status: "paid",
+      period_start: subscriptionStart,
+      period_end: subscriptionEnd,
+      payment_method: "cash",
+      notes: "Оплата при подключении",
+      confirmed_at: new Date().toISOString(),
+    });
 
-  if (paymentError) {
-    console.error("Seed payment error:", paymentError.message);
+    if (paymentError) {
+      console.error("Seed payment error:", paymentError.message);
+    }
   }
 
   return {

@@ -2,14 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Mail, Phone, MapPin } from "lucide-react";
+import { Phone, MapPin, MessageCircle, Send, AtSign } from "lucide-react";
 import { useT } from "@/i18n/I18nProvider";
 
 const navLinks = [
   { href: "#services", key: "nav.services" },
+  { href: "#pricing", key: "nav.pricing" },
   { href: "#about", key: "nav.about" },
-  { href: "#portfolio", key: "nav.portfolio" },
-  { href: "#quiz", key: "nav.quiz" },
+  { href: "#faq", key: "nav.faq" },
   { href: "#contact", key: "nav.contact" },
 ];
 
@@ -45,13 +45,23 @@ export default function Footer() {
             <h4 className="text-sm font-medium mb-4">{t("footer.contacts_title")}</h4>
             <ul className="space-y-2 text-sm text-zinc-500">
               <li>
-                <a href="mailto:owner@quvex.org" className="flex items-center gap-2 hover:text-white transition-colors">
-                  <Mail className="w-4 h-4" /> owner@quvex.org
+                <a href="tel:+994104759323" className="flex items-center gap-2 hover:text-white transition-colors">
+                  <Phone className="w-4 h-4" /> +994 10 475 93 23
                 </a>
               </li>
               <li>
-                <a href="tel:+994104759323" className="flex items-center gap-2 hover:text-white transition-colors">
-                  <Phone className="w-4 h-4" /> +994 10 475 93 23
+                <a href="https://wa.me/994104759323" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-white transition-colors">
+                  <MessageCircle className="w-4 h-4" /> WhatsApp
+                </a>
+              </li>
+              <li>
+                <a href="https://t.me/quvexcrm" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-white transition-colors">
+                  <Send className="w-4 h-4" /> @quvexcrm
+                </a>
+              </li>
+              <li>
+                <a href="https://instagram.com/quvex.official" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-white transition-colors">
+                  <AtSign className="w-4 h-4" /> quvex.official
                 </a>
               </li>
               <li className="flex items-center gap-2">

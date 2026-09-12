@@ -14,11 +14,11 @@ const questions = [
     id: "business_type",
     question: "quiz.q1_question",
     options: [
-      { value: "online", label: "quiz.q1_opt1", icon: ShoppingBag },
-      { value: "services", label: "quiz.q1_opt2", icon: Building2 },
-      { value: "saas", label: "quiz.q1_opt3", icon: Monitor },
-      { value: "education", label: "quiz.q1_opt4", icon: GraduationCap },
-      { value: "health", label: "quiz.q1_opt5", icon: Stethoscope },
+      { value: "detailing", label: "quiz.q1_opt1", icon: ShoppingBag },
+      { value: "wash", label: "quiz.q1_opt2", icon: Building2 },
+      { value: "polishing", label: "quiz.q1_opt3", icon: Monitor },
+      { value: "interior", label: "quiz.q1_opt4", icon: GraduationCap },
+      { value: "tinting", label: "quiz.q1_opt5", icon: Stethoscope },
       { value: "other", label: "quiz.q1_opt6", icon: Plane },
     ],
   },
@@ -26,12 +26,12 @@ const questions = [
     id: "needs",
     question: "quiz.q2_question",
     options: [
-      { value: "landing", label: "quiz.q2_opt1" },
-      { value: "website", label: "quiz.q2_opt2" },
-      { value: "webapp", label: "quiz.q2_opt3" },
-      { value: "saas", label: "quiz.q2_opt4" },
-      { value: "crm", label: "quiz.q2_opt5" },
-      { value: "redesign", label: "quiz.q2_opt6" },
+      { value: "1", label: "quiz.q2_opt1" },
+      { value: "2-3", label: "quiz.q2_opt2" },
+      { value: "4-6", label: "quiz.q2_opt3" },
+      { value: "7plus", label: "quiz.q2_opt4" },
+      { value: "chain", label: "quiz.q2_opt5" },
+      { value: "planning", label: "quiz.q2_opt6" },
     ],
   },
   {
@@ -60,6 +60,7 @@ export default function QuizSection() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [contact, setContact] = useState({ name: "", email: "", phone: "" });
+  const [consent, setConsent] = useState(false);
   const [showContact, setShowContact] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -78,12 +79,16 @@ export default function QuizSection() {
   };
 
   const handleSubmit = async () => {
-    if (!contact.name || !contact.email) {
+    if (!contact.name.trim() || !contact.email.trim()) {
       toast.error(t("common.fill_name_email"));
       return;
     }
+    if (!consent) {
+      toast.error(t("quiz.consent_error"));
+      return;
+    }
     setLoading(true);
-    const result = await submitQuiz({ answers, contact });
+    const result = await submitQuiz({ answers, contact, consent });
     setLoading(false);
     if (result.error) {
       toast.error(result.error);
@@ -93,7 +98,7 @@ export default function QuizSection() {
   };
 
   return (
-    <section id="quiz" className="relative py-24 lg:py-32">
+    <section id="quiz" className="relative py-24 lg:py-32 scroll-mt-20">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -113,7 +118,7 @@ export default function QuizSection() {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="rounded-3xl border border-zinc-800 bg-zinc-900/50 p-8 lg:p-12 glow"
+          className="rounded-3xl border border-zinc-800 bg-zinc-900/50 p-5 sm:p-8 lg:p-12 glow"
         >
           {submitted ? (
             <motion.div
@@ -140,25 +145,43 @@ export default function QuizSection() {
               <h3 className="text-xl font-semibold text-center mb-6">{t("quiz.contact_title")}</h3>
               <div className="grid gap-4 max-w-md mx-auto">
                 <Input
+                  id="quiz-name"
                   label={t("quiz.label_name")}
-                  placeholder="Иван Иванов"
+                  placeholder={t("form.name_placeholder")}
                   value={contact.name}
                   onChange={(e) => setContact({ ...contact, name: e.target.value })}
+                  required
+                  autoComplete="name"
                 />
                 <Input
+                  id="quiz-email"
                   label={t("quiz.label_email")}
                   type="email"
-                  placeholder="ivan@example.com"
+                  placeholder={t("form.email_placeholder")}
                   value={contact.email}
                   onChange={(e) => setContact({ ...contact, email: e.target.value })}
+                  required
+                  autoComplete="email"
                 />
                 <Input
+                  id="quiz-phone"
                   label={t("quiz.label_phone")}
                   type="tel"
-                  placeholder="+7 (999) 999-99-99"
+                  placeholder={t("form.phone_placeholder")}
                   value={contact.phone}
                   onChange={(e) => setContact({ ...contact, phone: e.target.value })}
+                  autoComplete="tel"
                 />
+                <label htmlFor="quiz-consent" className="flex items-start gap-2.5 text-xs text-zinc-400 cursor-pointer leading-relaxed">
+                  <input
+                    id="quiz-consent"
+                    type="checkbox"
+                    checked={consent}
+                    onChange={(e) => setConsent(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded accent-purple-500"
+                  />
+                  <span>{t("quiz.consent_text")}</span>
+                </label>
                 <Button
                   size="lg"
                   className="w-full mt-4"
@@ -178,7 +201,7 @@ export default function QuizSection() {
             </motion.div>
           ) : (
             <>
-              <div className="flex items-center gap-3 mb-8">
+              <div className="flex items-center gap-3 mb-8" role="progressbar" aria-valuenow={step + 1} aria-valuemin={1} aria-valuemax={questions.length} aria-label={t("quiz.desc")}>
                 <div className="flex-1 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
                   <motion.div
                     className="h-full bg-gradient-to-r from-primary to-secondary rounded-full"

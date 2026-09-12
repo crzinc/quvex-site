@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import type { Locale } from "./config";
 import { defaultLocale, locales } from "./config";
 import ru from "@/messages/ru.json";
@@ -37,9 +37,20 @@ function getInitialLocale(): Locale {
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const initial = getInitialLocale();
-  const [locale, setLocaleState] = useState<Locale>(initial);
-  const [messages, setMessages] = useState(allMessages[initial]);
+  // Всегда стартуем с defaultLocale, чтобы первый клиентский рендер
+  // совпадал с серверным. Локаль из cookie подхватываем в useEffect.
+  const [locale, setLocaleState] = useState<Locale>(defaultLocale);
+  const [messages, setMessages] = useState(allMessages[defaultLocale]);
+
+  useEffect(() => {
+    const saved = getInitialLocale();
+    if (saved !== defaultLocale) {
+      // Синхронизация с внешним источником (cookie) — легитимный useEffect
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLocaleState(saved);
+      setMessages(allMessages[saved]);
+    }
+  }, []);
 
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l);

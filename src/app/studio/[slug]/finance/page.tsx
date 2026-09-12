@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { formatDate, formatCurrency, getPaymentMethodLabel, getCategoryLabel } from "@/lib/utils";
+import { getCachedStudioId } from "@/lib/use-studio";
 import { toast } from "sonner";
 import { useT } from "@/i18n/I18nProvider";
 import type { StudioTransaction } from "@/types";
@@ -19,8 +20,11 @@ export default function StudioFinancePage() {
   const supabase = useRef(createClient());
   const [transactions, setTransactions] = useState<StudioTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [visible, setVisible] = useState(100);
   const [form, setForm] = useState({
     type: "income",
     amount: "",
@@ -30,24 +34,25 @@ export default function StudioFinancePage() {
   });
 
   const fetchTransactions = async () => {
-    const { data: studio } = await supabase.current
-      .from("studios")
-      .select("id")
-      .eq("slug", params.slug)
-      .single();
+    const studioId = await getCachedStudioId(supabase.current, params.slug as string);
 
-    if (!studio) return;
+    if (!studioId) {
+      setLoadError("Studio not found");
+      setLoading(false);
+      return;
+    }
 
-    const { data } = await supabase.current
+    const { data, error } = await supabase.current
       .from("studio_transactions")
       .select(
-        "*, studio_clients(name, phone, car_make, car_model, license_plate), studio_appointments(service_id, scheduled_at, technician_name, studio_services(name))",
+        "id, type, amount, category, payment_method, description, created_at, appointment_id, studio_clients(name, phone, car_make, car_model, license_plate), studio_appointments(service_id, scheduled_at, technician_name, studio_services(name))",
       )
-      .eq("studio_id", studio.id)
+      .eq("studio_id", studioId)
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(200);
 
-    if (data) setTransactions(data);
+    if (error) setLoadError(error.message);
+    else if (data) setTransactions(data as unknown as StudioTransaction[]);
     setLoading(false);
   };
 
@@ -63,16 +68,12 @@ export default function StudioFinancePage() {
       return;
     }
 
-    const { data: studio } = await supabase.current
-      .from("studios")
-      .select("id")
-      .eq("slug", params.slug)
-      .single();
+    const studioId = await getCachedStudioId(supabase.current, params.slug as string);
 
-    if (!studio) return;
+    if (!studioId) return;
 
     const { error } = await supabase.current.from("studio_transactions").insert({
-      studio_id: studio.id,
+      studio_id: studioId,
       type: form.type,
       amount,
       category: form.category,
@@ -90,13 +91,30 @@ export default function StudioFinancePage() {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!confirm(t("studio.finance.delete_confirm"))) return;
+    const { error } = await supabase.current.from("studio_transactions").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(t("common.deleted"));
+      fetchTransactions();
+    }
+  };
+
   const income = transactions.filter((t) => t.type === "income").reduce((sum, t) => sum + Number(t.amount), 0);
   const expenses = transactions.filter((t) => t.type === "expense").reduce((sum, t) => sum + Number(t.amount), 0);
+  const refunds = transactions.filter((t) => t.type === "refund").reduce((sum, t) => sum + Number(t.amount), 0);
+  const now = new Date();
   const monthIncome = transactions
-    .filter((t) => t.type === "income" && new Date(t.created_at).getMonth() === new Date().getMonth())
+    .filter((t) => {
+      const d = new Date(t.created_at);
+      return t.type === "income" && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    })
     .reduce((sum, t) => sum + Number(t.amount), 0);
+  const balance = income - expenses - refunds;
 
   const filteredTransactions = transactions.filter((tx) => {
+    if (typeFilter !== "all" && tx.type !== typeFilter) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -114,8 +132,24 @@ export default function StudioFinancePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 rounded-2xl bg-zinc-900/50 border border-zinc-800 animate-pulse" />
+          ))}
+        </div>
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-14 rounded-2xl bg-zinc-900/50 border border-zinc-800 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-sm text-red-400 mb-4">{loadError}</p>
+        <Button onClick={() => { setLoading(true); fetchTransactions(); }}>{t("common.retry")}</Button>
       </div>
     );
   }
@@ -123,8 +157,8 @@ export default function StudioFinancePage() {
   const statCards = [
     { title: t("studio.finance.month_income"), value: formatCurrency(monthIncome), icon: TrendingUp, color: "text-emerald-400" },
     { title: t("studio.finance.total_income"), value: formatCurrency(income), icon: ArrowDownLeft, color: "text-emerald-400" },
-    { title: t("studio.finance.expenses"), value: formatCurrency(expenses), icon: TrendingDown, color: "text-accent" },
-    { title: t("studio.finance.balance"), value: formatCurrency(income - expenses), icon: Wallet, color: "text-primary" },
+    { title: t("studio.finance.expenses"), value: formatCurrency(expenses + refunds), icon: TrendingDown, color: "text-accent" },
+    { title: t("studio.finance.balance"), value: formatCurrency(balance), icon: Wallet, color: "text-primary" },
   ];
 
   return (
@@ -231,6 +265,14 @@ export default function StudioFinancePage() {
         />
       </div>
 
+      <div className="flex gap-2 flex-wrap">
+        {(["all", "income", "expense", "refund"] as const).map((tp) => (
+          <Button key={tp} variant={typeFilter === tp ? "primary" : "outline"} size="sm" onClick={() => setTypeFilter(tp)}>
+            {tp === "all" ? t("studio.appointments.all") : tp === "income" ? t("studio.finance.income") : tp === "expense" ? t("studio.finance.expense") : t("studio.finance.refund")}
+          </Button>
+        ))}
+      </div>
+
       <Card>
         <CardContent className="p-0">
           {filteredTransactions.length === 0 ? (
@@ -240,16 +282,17 @@ export default function StudioFinancePage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-zinc-800">
-                    <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.date")}</th>
-                    <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.type_col")}</th>
-                    <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.source_col")}</th>
-                    <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.desc_col")}</th>
-                    <th className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.method_col")}</th>
-                    <th className="text-right p-4 text-zinc-400 font-medium">{t("studio.finance.amount_col")}</th>
+                    <th scope="col" className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.date")}</th>
+                    <th scope="col" className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.type_col")}</th>
+                    <th scope="col" className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.source_col")}</th>
+                    <th scope="col" className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.desc_col")}</th>
+                    <th scope="col" className="text-left p-4 text-zinc-400 font-medium">{t("studio.finance.method_col")}</th>
+                    <th scope="col" className="text-right p-4 text-zinc-400 font-medium">{t("studio.finance.amount_col")}</th>
+                    <th scope="col" className="text-right p-4 text-zinc-400 font-medium"><span className="sr-only">{t("studio.clients.action")}</span></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredTransactions.map((tx) => {
+                  {filteredTransactions.slice(0, visible).map((tx) => {
                     const client = tx.studio_clients;
                     const service = tx.studio_appointments?.studio_services?.name;
                     const car = [client?.car_make, client?.car_model].filter(Boolean).join(" ");
@@ -292,11 +335,25 @@ export default function StudioFinancePage() {
                           {tx.type === "income" ? "+" : "−"}
                           {formatCurrency(Number(tx.amount))}
                         </td>
+                        <td className="p-4 text-right">
+                          {!tx.appointment_id && (
+                            <button onClick={() => handleDelete(tx.id)} className="text-xs text-zinc-500 hover:text-red-400 transition-colors" aria-label="Delete">
+                              ×
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
+              {filteredTransactions.length > visible && (
+                <div className="p-4 text-center">
+                  <Button variant="outline" size="sm" onClick={() => setVisible((v) => v + 100)}>
+                    {t("studio.finance.show_more")}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

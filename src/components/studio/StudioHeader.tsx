@@ -4,6 +4,7 @@ import { Bell } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
+import { getCachedStudioId } from "@/lib/use-studio";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { useT } from "@/i18n/I18nProvider";
@@ -20,21 +21,21 @@ export default function StudioHeader({ slug }: StudioHeaderProps) {
   const { t } = useT();
 
   useEffect(() => {
-    supabase.current
-      .from("studios")
-      .select("id")
-      .eq("slug", slug)
-      .single()
-      .then(async ({ data: studio }) => {
-        if (!studio) return;
-        const { data } = await supabase.current
-          .from("studio_messages")
-          .select("id, subject, message, created_at")
-          .eq("studio_id", studio.id)
-          .order("created_at", { ascending: false })
-          .limit(5);
-        if (data) setNotifications(data);
-      });
+    let cancelled = false;
+    // Не блокируем шапку: колокольчик подтянется когда сможет
+    getCachedStudioId(supabase.current, slug).then(async (studioId) => {
+      if (cancelled || !studioId) return;
+      const { data } = await supabase.current
+        .from("studio_messages")
+        .select("id, subject, message, created_at")
+        .eq("studio_id", studioId)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (!cancelled && data) setNotifications(data);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [slug]);
 
   return (

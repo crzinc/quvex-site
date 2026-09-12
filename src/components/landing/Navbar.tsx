@@ -11,9 +11,9 @@ import { useT } from "@/i18n/I18nProvider";
 
 const navLinks = [
   { href: "#services", key: "nav.services" },
+  { href: "#pricing", key: "nav.pricing" },
   { href: "#about", key: "nav.about" },
-  { href: "#portfolio", key: "nav.portfolio" },
-  { href: "#quiz", key: "nav.quiz" },
+  { href: "#faq", key: "nav.faq" },
   { href: "#contact", key: "nav.contact" },
 ];
 
@@ -47,7 +47,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
           <Link href="/" className="flex items-center gap-3 group">
-            <Image src="/logo.png" alt="Quvex CRM" width={64} height={64} className="rounded-xl group-hover:opacity-80 transition-opacity" />
+            <Image src="/logo.png" alt="Quvex CRM" width={64} height={64} priority className="rounded-xl group-hover:opacity-80 transition-opacity" />
             <span className="text-xl font-bold gradient-text">Quvex CRM</span>
           </Link>
 
@@ -65,7 +65,7 @@ export default function Navbar() {
             <Link href="/auth/login">
               <Button size="sm" variant="ghost">{t("nav.login")}</Button>
             </Link>
-            <a href="#contact">
+            <a href="#quiz">
               <Button size="sm">{t("nav.contact_btn")}</Button>
             </a>
           </div>
@@ -74,6 +74,8 @@ export default function Navbar() {
             <LanguageSwitcher />
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
+              aria-expanded={mobileOpen}
+              aria-label="Menu"
               className="text-zinc-400 hover:text-white p-2"
             >
               {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -105,7 +107,7 @@ export default function Navbar() {
                 <Link href="/auth/login" className="block" onClick={() => setMobileOpen(false)}>
                   <Button variant="ghost" className="w-full">{t("nav.login")}</Button>
                 </Link>
-                <a href="#contact" className="block" onClick={() => setMobileOpen(false)}>
+                <a href="#quiz" className="block" onClick={() => setMobileOpen(false)}>
                   <Button className="w-full">{t("nav.contact_btn")}</Button>
                 </a>
               </div>

@@ -2,14 +2,29 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@/lib/supabase/client";
+import { createStudioAccount } from "@/lib/studio-actions";
+import { createEmployeeAccount } from "@/lib/admin-actions";
 import { toast } from "sonner";
 import { LogOut, Building, Plus } from "lucide-react";
 import { useT } from "@/i18n/I18nProvider";
+
+function slugify(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/[а-яё]/g, (ch) => {
+      const map: Record<string, string> = { а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z", и: "i", й: "y", к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "h", ц: "ts", ч: "ch", ш: "sh", щ: "sch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya" };
+      return map[ch] ?? "";
+    })
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}
 
 export default function SettingsPage() {
   const [email, setEmail] = useState("");
@@ -31,10 +46,12 @@ export default function SettingsPage() {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
-    if (error) { toast.error(error.message); } else {
+    const result = await createEmployeeAccount(email, password);
+    if ("error" in result && result.error) toast.error(result.error);
+    else {
       toast.success(t("common.employee_created"));
-      setEmail(""); setPassword("");
+      setEmail("");
+      setPassword("");
     }
     setLoading(false);
   };
@@ -42,48 +59,20 @@ export default function SettingsPage() {
   const handleCreateStudio = async (e: React.FormEvent) => {
     e.preventDefault();
     setStudioLoading(true);
-
-    const { data: userData, error: userError } = await supabase.auth.admin.createUser({
-      email: studioForm.owner_email,
-      password: Math.random().toString(36).slice(-8),
-      email_confirm: true,
+    const result = await createStudioAccount({
+      name: studioForm.name.trim(),
+      owner_email: studioForm.owner_email.trim(),
+      owner_phone: studioForm.owner_phone.trim(),
+      address: studioForm.address.trim(),
+      description: studioForm.description.trim(),
+      subscription_period: "trial",
     });
-
-    if (userError) {
-      toast.error(t("admin.settings.user_create_error") + userError.message);
-      setStudioLoading(false);
-      return;
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success(`${t("admin.settings.studio_created")} ${result.owner_email} / ${result.password}`);
+      setStudioForm({ name: "", slug: "", owner_email: "", owner_phone: "", address: "", description: "" });
     }
-
-    const { data: studio, error: studioError } = await supabase.from("studios").insert({
-      name: studioForm.name,
-      slug: studioForm.slug,
-      owner_email: studioForm.owner_email,
-      owner_phone: studioForm.owner_phone,
-      address: studioForm.address,
-      description: studioForm.description,
-    }).select().single();
-
-    if (studioError) {
-      toast.error(t("admin.settings.studio_create_error") + studioError.message);
-      setStudioLoading(false);
-      return;
-    }
-
-    const { error: linkError } = await supabase.from("user_studios").insert({
-      user_id: userData.user.id,
-      studio_id: studio.id,
-      role: "owner",
-    });
-
-    if (linkError) {
-      toast.error(t("admin.settings.user_link_error") + linkError.message);
-      setStudioLoading(false);
-      return;
-    }
-
-    toast.success(t("admin.settings.studio_created") + studioForm.owner_email);
-    setStudioForm({ name: "", slug: "", owner_email: "", owner_phone: "", address: "", description: "" });
     setStudioLoading(false);
   };
 
@@ -109,18 +98,22 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCreateStudio} className="space-y-4">
-            <Input label={`${t("admin.settings.studio_name")} *`} placeholder={t("admin.settings.studio_name_placeholder")} value={studioForm.name} onChange={(e) => setStudioForm({ ...studioForm, name: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-") })} required />
-            <Input label={t("admin.settings.slug")} placeholder={t("admin.settings.slug_placeholder")} value={studioForm.slug} onChange={(e) => setStudioForm({ ...studioForm, slug: e.target.value })} required />
-            <Input label={`${t("admin.settings.owner_email")} *`} type="email" placeholder={t("admin.settings.owner_email_placeholder")} value={studioForm.owner_email} onChange={(e) => setStudioForm({ ...studioForm, owner_email: e.target.value })} required />
-            <div className="grid grid-cols-2 gap-4">
-              <Input label={t("admin.settings.phone")} type="tel" placeholder="+7 (999) 123-45-67" value={studioForm.owner_phone} onChange={(e) => setStudioForm({ ...studioForm, owner_phone: e.target.value })} />
-              <Input label={t("admin.settings.address")} placeholder={t("admin.settings.address_placeholder")} value={studioForm.address} onChange={(e) => setStudioForm({ ...studioForm, address: e.target.value })} />
+            <Input id="st-name" label={`${t("admin.settings.studio_name")} *`} placeholder={t("admin.settings.studio_name_placeholder")} value={studioForm.name} onChange={(e) => setStudioForm({ ...studioForm, name: e.target.value, slug: slugify(e.target.value) })} required />
+            <Input id="st-slug" label={t("admin.settings.slug")} placeholder={t("admin.settings.slug_placeholder")} value={studioForm.slug} onChange={(e) => setStudioForm({ ...studioForm, slug: slugify(e.target.value) })} required />
+            <Input id="st-email" label={`${t("admin.settings.owner_email")} *`} type="email" placeholder={t("admin.settings.owner_email_placeholder")} value={studioForm.owner_email} onChange={(e) => setStudioForm({ ...studioForm, owner_email: e.target.value })} required />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input id="st-phone" label={t("admin.settings.phone")} type="tel" placeholder="+994 (50) 123-45-67" value={studioForm.owner_phone} onChange={(e) => setStudioForm({ ...studioForm, owner_phone: e.target.value })} />
+              <Input id="st-address" label={t("admin.settings.address")} placeholder={t("admin.settings.address_placeholder")} value={studioForm.address} onChange={(e) => setStudioForm({ ...studioForm, address: e.target.value })} />
             </div>
-            <Textarea label={t("admin.settings.description")} placeholder={t("admin.settings.description_placeholder")} value={studioForm.description} onChange={(e) => setStudioForm({ ...studioForm, description: e.target.value })} rows={3} />
+            <Textarea id="st-desc" label={t("admin.settings.description")} placeholder={t("admin.settings.description_placeholder")} value={studioForm.description} onChange={(e) => setStudioForm({ ...studioForm, description: e.target.value })} rows={3} />
+            <p className="text-xs text-zinc-500">{t("admin.settings.trial_hint")}</p>
             <Button type="submit" loading={studioLoading}>
               <Plus className="w-4 h-4" /> {t("admin.settings.create")}
             </Button>
           </form>
+          <p className="text-xs text-zinc-500 mt-4">
+            {t("admin.settings.full_form_hint")} <Link href="/dashboard/studios/new" className="text-primary hover:underline">{t("admin.studios.new_title")}</Link>
+          </p>
         </CardContent>
       </Card>
 
@@ -128,8 +121,8 @@ export default function SettingsPage() {
         <CardHeader><CardTitle>{t("settings.create_title")}</CardTitle></CardHeader>
         <CardContent>
           <form onSubmit={handleCreateUser} className="space-y-4">
-            <Input label={t("settings.email_label")} type="email" placeholder="worker@quvex.dev" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            <Input label={t("settings.password_label")} type="password" placeholder="Min 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+            <Input id="emp-email" label={t("settings.email_label")} type="email" placeholder="worker@quvex.dev" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <Input id="emp-pass" label={t("settings.password_label")} type="password" placeholder="Min 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
             <Button type="submit" loading={loading}>{t("settings.create_btn")}</Button>
           </form>
         </CardContent>

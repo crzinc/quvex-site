@@ -5,12 +5,29 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatDate(date: string | Date) {
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(date));
+export function formatDate(date: string | Date, locale = "ru-RU") {
+  try {
+    return new Intl.DateTimeFormat(locale, {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(new Date(date));
+  } catch {
+    return String(date);
+  }
+}
+
+export function formatDateTime(date: string | Date, locale = "ru-RU") {
+  try {
+    return new Intl.DateTimeFormat(locale, {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(date));
+  } catch {
+    return String(date);
+  }
 }
 
 export function formatCurrency(amount: number) {
@@ -20,9 +37,11 @@ export function formatCurrency(amount: number) {
   }).format(amount);
 }
 
-export function getInitials(name: string) {
-  return name
-    .split(" ")
+export function getInitials(name: string | null | undefined) {
+  if (!name || typeof name !== "string") return "?";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  return parts
     .map((n) => n[0])
     .join("")
     .toUpperCase()

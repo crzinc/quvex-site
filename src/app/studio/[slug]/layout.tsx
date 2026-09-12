@@ -48,9 +48,9 @@ export default async function StudioLayout({
         studioName={studio.name}
         studioLogo={studio.logo_url}
       />
-      <div className="flex-1 ml-64">
+      <div className="flex-1 lg:ml-64">
         <StudioHeader slug={slug} />
-        <main className="p-8">{children}</main>
+        <main className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">{children}</main>
       </div>
     </div>
   );

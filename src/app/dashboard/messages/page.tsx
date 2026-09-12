@@ -22,12 +22,13 @@ export default function DashboardMessagesPage() {
   const { t } = useT();
 
   const fetchMessages = async () => {
-    const { data } = await supabase.current
+    const { data, error } = await supabase.current
       .from("studio_messages")
       .select("*, studios(name, slug), message_replies(*)")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
 
-    if (data) {
+    if (!error && data) {
       const messagesWithReplies = data.map((msg) => ({
         ...msg,
         replies: msg.message_replies || [],
@@ -35,6 +36,15 @@ export default function DashboardMessagesPage() {
       setMessages(messagesWithReplies);
     }
     setLoading(false);
+  };
+
+  const selectMessage = async (msg: StudioMessage) => {
+    setSelectedMessage(msg);
+    setReply("");
+    if (!msg.read_by_admin) {
+      await supabase.current.from("studio_messages").update({ read_by_admin: true }).eq("id", msg.id);
+      setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, read_by_admin: true } : m)));
+    }
   };
 
   useEffect(() => {
@@ -46,13 +56,17 @@ export default function DashboardMessagesPage() {
 
     const { error } = await supabase.current.from("message_replies").insert({
       message_id: selectedMessage.id,
-      content: reply,
+      content: reply.trim(),
       is_admin: true,
     });
 
     if (error) {
       toast.error(t("common.reply_send_error"));
     } else {
+      await supabase.current
+        .from("studio_messages")
+        .update({ status: selectedMessage.status === "new" ? "in_progress" : selectedMessage.status, read_by_studio: false, updated_at: new Date().toISOString() })
+        .eq("id", selectedMessage.id);
       toast.success(t("common.reply_sent"));
       setReply("");
       fetchMessages();
@@ -125,12 +139,17 @@ export default function DashboardMessagesPage() {
             </div>
           ) : (
             filteredMessages.map((msg) => (
-              <Card
+              <div
                 key={msg.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => selectMessage(msg)}
+                onKeyDown={(e) => { if (e.key === "Enter") selectMessage(msg); }}
+              >
+              <Card
                 className={`cursor-pointer transition-colors ${
                   selectedMessage?.id === msg.id ? "border-primary" : "hover:border-zinc-700"
                 } ${!msg.read_by_admin ? "border-l-2 border-l-primary" : ""}`}
-                onClick={() => setSelectedMessage(msg)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-2">
@@ -152,6 +171,7 @@ export default function DashboardMessagesPage() {
                   </div>
                 </CardContent>
               </Card>
+              </div>
             ))
           )}
         </div>
@@ -176,6 +196,11 @@ export default function DashboardMessagesPage() {
                     {selectedMessage.status === "in_progress" && (
                       <Button size="sm" onClick={() => updateStatus(selectedMessage.id, "resolved")}>
                         {t("admin.messages.resolved_btn")}
+                      </Button>
+                    )}
+                    {(selectedMessage.status === "resolved" || selectedMessage.status === "in_progress") && (
+                      <Button size="sm" variant="outline" onClick={() => updateStatus(selectedMessage.id, "closed")}>
+                        {t("admin.messages.close_btn")}
                       </Button>
                     )}
                   </div>

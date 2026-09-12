@@ -13,9 +13,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getStatusColor, formatDate, formatCurrency, getStatusLabel, cn } from "@/lib/utils";
 import { useT } from "@/i18n/I18nProvider";
-import type { Studio, StudioClient, StudioAppointment, Payment, Plan, SubscriptionPeriod } from "@/types";
+import type { Studio, StudioClient, StudioAppointment, Payment, Plan } from "@/types";
 
-const RENEW_PERIODS: { value: SubscriptionPeriod; labelKey: string }[] = [
+const RENEW_PERIODS: { value: "monthly" | "quarterly" | "yearly"; labelKey: string }[] = [
   { value: "monthly", labelKey: "subscription.period_monthly" },
   { value: "quarterly", labelKey: "subscription.period_quarterly" },
   { value: "yearly", labelKey: "subscription.period_yearly" },
@@ -31,7 +31,7 @@ export default function DashboardStudioDetailPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [renewPlanId, setRenewPlanId] = useState("");
-  const [renewPeriod, setRenewPeriod] = useState<SubscriptionPeriod>("monthly");
+  const [renewPeriod, setRenewPeriod] = useState<"monthly" | "quarterly" | "yearly">("monthly");
   const [renewing, setRenewing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -78,7 +78,9 @@ export default function DashboardStudioDetailPage() {
         if (paymentsResult.data) setPayments(paymentsResult.data);
         if (plansResult.data) {
           setPlans(plansResult.data);
-          setRenewPlanId(studioData.plan_id || plansResult.data[0]?.id || "");
+          const paidPlans = plansResult.data.filter((p) => p.code !== "trial");
+          const currentPlan = paidPlans.find((p) => p.id === studioData.plan_id);
+          setRenewPlanId(currentPlan?.id || paidPlans[0]?.id || "");
         }
       }
       setLoading(false);
@@ -322,7 +324,7 @@ export default function DashboardStudioDetailPage() {
                 onChange={(e) => setRenewPlanId(e.target.value)}
                 className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-primary/50"
               >
-                {plans.map((plan) => (
+                {plans.filter((plan) => plan.code !== "trial").map((plan) => (
                   <option key={plan.id} value={plan.id}>{plan.name}</option>
                 ))}
               </select>

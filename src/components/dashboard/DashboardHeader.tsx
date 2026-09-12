@@ -153,7 +153,7 @@ export default function DashboardHeader() {
               {user?.email?.[0].toUpperCase() || "?"}
             </div>
             <div className="text-sm">
-              <p className="text-white font-medium truncate max-w-[150px]">{user?.email || "Worker"}</p>
+              <p className="text-white font-medium truncate max-w-[150px]">{user?.email || "—"}</p>
               <p className="text-xs text-zinc-500">{t("header.employee")}</p>
             </div>
           </div>

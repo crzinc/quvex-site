@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getCachedStudioId } from "@/lib/use-studio";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getStatusColor, getStatusLabel, formatCurrency, getInitials } from "@/lib/utils";
@@ -26,46 +27,50 @@ export default function StudioDashboardPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: studio } = await supabase.current
-        .from("studios")
-        .select("id")
-        .eq("slug", params.slug)
-        .single();
+      const studioId = await getCachedStudioId(supabase.current, params.slug as string);
 
-      if (!studio) return;
+      if (!studioId) {
+        setLoading(false);
+        return;
+      }
 
-      const [clientsResult, appointmentsResult, transactionsResult] = await Promise.all([
-        supabase.current
-          .from("studio_clients")
-          .select("*")
-          .eq("studio_id", studio.id)
-          .order("created_at", { ascending: false }),
+      const today = new Date().toISOString().split("T")[0];
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      const [totalRes, newRes, appointmentsResult, transactionsResult, recentRes] = await Promise.all([
+        supabase.current.from("studio_clients").select("id", { count: "exact", head: true }).eq("studio_id", studioId),
+        supabase.current.from("studio_clients").select("id", { count: "exact", head: true }).eq("studio_id", studioId).eq("status", "new"),
         supabase.current
           .from("studio_appointments")
-          .select("*")
-          .eq("studio_id", studio.id)
-          .gte("scheduled_at", new Date().toISOString().split("T")[0])
-          .lt("scheduled_at", new Date(Date.now() + 86400000).toISOString().split("T")[0]),
+          .select("id")
+          .eq("studio_id", studioId)
+          .gte("scheduled_at", today)
+          .lt("scheduled_at", tomorrow),
         supabase.current
           .from("studio_transactions")
           .select("amount")
-          .eq("studio_id", studio.id)
+          .eq("studio_id", studioId)
           .eq("type", "income")
-          .gte("created_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
+          .gte("created_at", monthStart)
+          .limit(1000),
+        supabase.current
+          .from("studio_clients")
+          .select("id, name, car_make, car_model, status")
+          .eq("studio_id", studioId)
+          .order("created_at", { ascending: false })
+          .limit(5),
       ]);
 
-      const clients = clientsResult.data || [];
-      const appointments = appointmentsResult.data || [];
-      const revenue = transactionsResult.data?.reduce((sum, t) => sum + t.amount, 0) || 0;
+      const revenue = transactionsResult.data?.reduce((sum, t) => sum + Number(t.amount || 0), 0) || 0;
 
       setStats({
-        total_clients: clients.length,
-        new_clients: clients.filter((c) => c.status === "new").length,
-        appointments_today: appointments.length,
+        total_clients: totalRes.count ?? 0,
+        new_clients: newRes.count ?? 0,
+        appointments_today: appointmentsResult.data?.length ?? 0,
         revenue_month: revenue,
       });
 
-      setRecentClients(clients.slice(0, 5));
+      setRecentClients((recentRes.data as unknown as StudioClient[]) || []);
       setLoading(false);
     };
 

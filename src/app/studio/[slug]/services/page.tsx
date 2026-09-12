@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { formatCurrency, getCategoryLabel } from "@/lib/utils";
+import { getCachedStudioId } from "@/lib/use-studio";
 import { toast } from "sonner";
 import { useT } from "@/i18n/I18nProvider";
 import type { StudioService } from "@/types";
@@ -33,21 +34,20 @@ export default function StudioServicesPage() {
   const supabase = useRef(createClient());
 
   const fetchServices = async () => {
-    const { data: studio } = await supabase.current
-      .from("studios")
-      .select("id")
-      .eq("slug", params.slug)
-      .single();
-
-    if (!studio) return;
+    const studioId = await getCachedStudioId(supabase.current, params.slug as string);
+    if (!studioId) {
+      setLoading(false);
+      return;
+    }
 
     const { data } = await supabase.current
       .from("studio_services")
-      .select("*")
-      .eq("studio_id", studio.id)
-      .order("sort_order", { ascending: true });
+      .select("id, name, description, price, duration_minutes, category, is_active, sort_order")
+      .eq("studio_id", studioId)
+      .order("sort_order", { ascending: true })
+      .limit(200);
 
-    if (data) setServices(data);
+    if (data) setServices(data as unknown as StudioService[]);
     setLoading(false);
   };
 
@@ -57,20 +57,27 @@ export default function StudioServicesPage() {
   }, [params.slug]);
 
   const handleSave = async () => {
-    const { data: studio } = await supabase.current
-      .from("studios")
-      .select("id")
-      .eq("slug", params.slug)
-      .single();
+    if (!form.name.trim()) {
+      toast.error(t("studio.services.name") + " *");
+      return;
+    }
+    const price = parseFloat(form.price);
+    const duration = parseInt(form.duration_minutes);
+    if (Number.isNaN(price) || price < 0 || Number.isNaN(duration) || duration <= 0 || duration > 1440) {
+      toast.error(t("common.invalid_amount"));
+      return;
+    }
 
-    if (!studio) return;
+    const studioId = await getCachedStudioId(supabase.current, params.slug as string);
+
+    if (!studioId) return;
 
     const serviceData = {
-      studio_id: studio.id,
-      name: form.name,
+      studio_id: studioId,
+      name: form.name.trim(),
       description: form.description,
-      price: parseFloat(form.price) || 0,
-      duration_minutes: parseInt(form.duration_minutes) || 60,
+      price,
+      duration_minutes: duration,
       category: form.category,
     };
 
@@ -103,12 +110,32 @@ export default function StudioServicesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm(t("common.confirm_delete_service"))) return;
 
+    const { count } = await supabase.current
+      .from("studio_appointments")
+      .select("id", { count: "exact", head: true })
+      .eq("service_id", id);
+    if (count && count > 0) {
+      if (!confirm(t("studio.services.delete_with_bookings"))) return;
+    }
+
     const { error } = await supabase.current.from("studio_services").delete().eq("id", id);
 
     if (error) {
-      toast.error(t("common.delete_error"));
+      toast.error(error.message);
     } else {
       toast.success(t("common.service_deleted"));
+      fetchServices();
+    }
+  };
+
+  const toggleActive = async (service: StudioService) => {
+    const { error } = await supabase.current
+      .from("studio_services")
+      .update({ is_active: !service.is_active })
+      .eq("id", service.id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(!service.is_active ? t("studio.services.active") : t("studio.services.inactive"));
       fetchServices();
     }
   };
@@ -264,6 +291,17 @@ export default function StudioServicesPage() {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-zinc-500">{service.duration_minutes} {t("studio.services.min")}</span>
                   <span className="text-lg font-bold text-primary">{formatCurrency(service.price)}</span>
+                </div>
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-800/50">
+                  <button
+                    onClick={() => toggleActive(service)}
+                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${service.is_active ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-700"}`}
+                  >
+                    {service.is_active ? t("studio.services.active") : t("studio.services.inactive")}
+                  </button>
+                  {!service.is_active && (
+                    <span className="text-[11px] text-zinc-600">{t("studio.services.deactivate_warn")}</span>
+                  )}
                 </div>
               </CardContent>
             </Card>

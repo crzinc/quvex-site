@@ -1,23 +1,18 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Building2, TrendingUp, Headphones, Shield } from "lucide-react";
+import { Check } from "lucide-react";
 import { useT } from "@/i18n/I18nProvider";
 
-const statKeys = [
-  { icon: Building2, value: "about.stat1_value", label: "about.stat1_label" },
-  { icon: TrendingUp, value: "about.stat2_value", label: "about.stat2_label" },
-  { icon: Headphones, value: "about.stat3_value", label: "about.stat3_label" },
-  { icon: Shield, value: "about.stat4_value", label: "about.stat4_label" },
-];
+const pointKeys = ["about.point1", "about.point2", "about.point3", "about.point4"];
 
 export default function About() {
   const { t } = useT();
 
   return (
-    <section id="about" className="relative py-24 lg:py-32">
+    <section id="about" className="relative py-24 lg:py-32 scroll-mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -36,18 +31,17 @@ export default function About() {
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            className="grid grid-cols-2 gap-4"
+            className="space-y-4"
           >
-            {statKeys.map((stat) => (
+            {pointKeys.map((key) => (
               <div
-                key={stat.label}
-                className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/30 text-center"
+                key={key}
+                className="flex items-start gap-3 p-4 sm:p-5 rounded-2xl border border-zinc-800 bg-zinc-900/30"
               >
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                  <stat.icon className="w-5 h-5 text-primary" />
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                  <Check className="w-4 h-4 text-emerald-400" />
                 </div>
-                <p className="text-2xl font-bold gradient-text">{t(stat.value)}</p>
-                <p className="text-xs text-zinc-500 mt-1">{t(stat.label)}</p>
+                <p className="text-sm text-zinc-300 leading-relaxed">{t(key)}</p>
               </div>
             ))}
           </motion.div>

@@ -15,16 +15,35 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Quvex CRM — Управление клиентами и продажами",
+  metadataBase: new URL("https://quvex.org"),
+  title: "Quvex CRM — CRM для автодетейлинга",
   description:
-    "CRM-система для управления клиентами, сделками и продажами. Автоматизация воронки, аналитика и коммуникации с клиентами.",
+    "Quvex CRM — система для автодетейлинг-студий: онлайн-запись, график мастеров, клиентская база, напоминания и финансы.",
   icons: { icon: "/logo.png", apple: "/logo.png" },
   openGraph: {
-    title: "Quvex CRM — Управление клиентами и продажами",
+    title: "Quvex CRM — CRM для автодетейлинга",
     description:
-      "CRM-система для управления клиентами, сделками и продажами.",
-    images: [{ url: "/logo.png" }],
+      "Онлайн-запись, график мастеров, клиентская база и финансы для детейлинг-студий.",
+    images: [{ url: "/og-cover.png", width: 1200, height: 630 }],
+    locale: "ru_RU",
+    type: "website",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Quvex CRM — CRM для автодетейлинга",
+    description: "Онлайн-запись, график мастеров, клиентская база и финансы.",
+    images: ["/og-cover.png"],
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Quvex CRM",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  description: "CRM для автодетейлинг-студий: записи, клиенты, услуги, финансы.",
+  offers: { "@type": "Offer", price: "50", priceCurrency: "AZN" },
 };
 
 export default function RootLayout({
@@ -33,8 +52,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru" className={`${geistSans.variable} ${geistMono.variable} h-full`}>
+    <html lang="ru" data-scroll-behavior="smooth" className={`${geistSans.variable} ${geistMono.variable} h-full`}>
       <body className="min-h-full antialiased noise">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <I18nProvider>{children}</I18nProvider>
         <Toaster
           position="top-right"

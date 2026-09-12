@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS public.studios (
   settings JSONB DEFAULT '{}'::jsonb,
   plan_id UUID REFERENCES public.plans(id),
   subscription_status TEXT DEFAULT 'active' CHECK (subscription_status IN ('active', 'overdue', 'cancelled')),
-  subscription_period TEXT DEFAULT 'monthly' CHECK (subscription_period IN ('monthly', 'quarterly', 'yearly')),
+  subscription_period TEXT DEFAULT 'monthly' CHECK (subscription_period IN ('monthly', 'quarterly', 'yearly', 'trial')),
   subscription_start DATE,
   subscription_end DATE,
   updated_at TIMESTAMPTZ DEFAULT now()
@@ -103,10 +103,16 @@ CREATE TABLE IF NOT EXISTS public.studios (
 -- Seed тарифных планов (игнорируем, если уже существуют)
 INSERT INTO public.plans (name, code, price_monthly, price_quarterly, price_yearly, max_clients, sort_order)
 VALUES
+  ('Триал 3 дня', 'trial', 0, 0, 0, 10, 0),
   ('Базовый', 'basic', 50, 135, 480, 50, 1),
   ('Стандарт', 'standard', 100, 270, 960, 200, 2),
   ('Премиум', 'premium', 200, 540, 1920, NULL, 3)
 ON CONFLICT (code) DO NOTHING;
+
+-- Разрешить период 'trial' на уже существующих таблицах
+ALTER TABLE public.studios DROP CONSTRAINT IF EXISTS studios_subscription_period_check;
+ALTER TABLE public.studios ADD CONSTRAINT studios_subscription_period_check
+  CHECK (subscription_period IN ('monthly', 'quarterly', 'yearly', 'trial'));
 
 -- Привязка пользователей к студиям
 CREATE TABLE IF NOT EXISTS public.user_studios (

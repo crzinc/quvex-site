@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getStatusColor, getStatusLabel, formatCurrency, getInitials, cn } from "@/lib/utils";
+import { getCachedStudioId } from "@/lib/use-studio";
 import { useT } from "@/i18n/I18nProvider";
 import type { StudioClient, Plan } from "@/types";
 
@@ -18,31 +19,41 @@ export default function StudioClientsPage() {
   const [clients, setClients] = useState<StudioClient[]>([]);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const supabase = useRef(createClient());
 
   useEffect(() => {
     const fetchClients = async () => {
-      const { data: studio } = await supabase.current
-        .from("studios")
-        .select("id, plan_id")
-        .eq("slug", params.slug)
-        .single();
+      const studioId = await getCachedStudioId(supabase.current, params.slug as string);
 
-      if (!studio) return;
+      if (!studioId) {
+        setLoadError("Studio not found");
+        setLoading(false);
+        return;
+      }
+
+      const { data: studioRow } = await supabase.current
+        .from("studios")
+        .select("plan_id")
+        .eq("id", studioId)
+        .single();
 
       const [clientsResult, planResult] = await Promise.all([
         supabase.current
           .from("studio_clients")
-          .select("*")
-          .eq("studio_id", studio.id)
-          .order("created_at", { ascending: false }),
-        studio.plan_id
-          ? supabase.current.from("plans").select("*").eq("id", studio.plan_id).single()
+          .select("id, name, email, phone, car_make, car_model, car_year, license_plate, status, total_visits, total_spent, created_at")
+          .eq("studio_id", studioId)
+          .order("created_at", { ascending: false })
+          .limit(200),
+        studioRow?.plan_id
+          ? supabase.current.from("plans").select("*").eq("id", studioRow.plan_id).single()
           : Promise.resolve({ data: null }),
       ]);
 
-      if (clientsResult.data) setClients(clientsResult.data);
+      if (clientsResult.error) setLoadError(clientsResult.error.message);
+      else if (clientsResult.data) setClients(clientsResult.data as unknown as StudioClient[]);
       if (planResult.data) setPlan(planResult.data);
       setLoading(false);
     };
@@ -50,14 +61,18 @@ export default function StudioClientsPage() {
     fetchClients();
   }, [params.slug]);
 
-  const filteredClients = clients.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search) ||
-      c.car_make.toLowerCase().includes(search.toLowerCase()) ||
-      c.car_model.toLowerCase().includes(search.toLowerCase()) ||
-      c.license_plate.toLowerCase().includes(search.toLowerCase())
-  );
+  const q = search.trim().toLowerCase();
+  const filteredClients = clients.filter((c) => {
+    if (statusFilter !== "all" && c.status !== statusFilter) return false;
+    if (!q) return true;
+    return (
+      (c.name || "").toLowerCase().includes(q) ||
+      (c.phone || "").includes(search.trim()) ||
+      (c.car_make || "").toLowerCase().includes(q) ||
+      (c.car_model || "").toLowerCase().includes(q) ||
+      (c.license_plate || "").toLowerCase().includes(q)
+    );
+  });
 
   const maxClients = plan?.max_clients ?? null;
   const limitReached = maxClients !== null && clients.length >= maxClients;
@@ -65,15 +80,26 @@ export default function StudioClientsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-16 rounded-2xl bg-zinc-900/50 border border-zinc-800 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-sm text-red-400 mb-4">{loadError}</p>
+        <Button onClick={() => window.location.reload()}>{t("common.retry")}</Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold mb-1">{t("studio.clients.title")}</h1>
           <p className="text-sm text-zinc-400">{clients.length} {t("studio.clients.subtitle")}</p>
@@ -114,6 +140,14 @@ export default function StudioClientsPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-primary/50 transition-colors"
         />
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        {(["all", "new", "regular", "vip", "inactive"] as const).map((s) => (
+          <Button key={s} variant={statusFilter === s ? "primary" : "outline"} size="sm" onClick={() => setStatusFilter(s)}>
+            {s === "all" ? t("studio.appointments.all") : getStatusLabel(s, t)}
+          </Button>
+        ))}
       </div>
 
       <Card>

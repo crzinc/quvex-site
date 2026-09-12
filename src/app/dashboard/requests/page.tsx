@@ -13,17 +13,22 @@ import type { Client } from "@/types";
 export default function DashboardRequestsPage() {
   const [requests, setRequests] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const supabase = useRef(createClient());
   const { t } = useT();
 
   useEffect(() => {
     const fetchRequests = async () => {
-      const { data } = await supabase.current
+      const { data, error } = await supabase.current
         .from("clients")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("id,name,email,phone,company,status,source,budget,created_at")
+        .order("created_at", { ascending: false })
+        .limit(500);
 
-      if (data) setRequests(data);
+      if (error) setLoadError(error.message);
+      else if (data) setRequests(data as unknown as Client[]);
       setLoading(false);
     };
 
@@ -32,17 +37,47 @@ export default function DashboardRequestsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-16 rounded-2xl bg-zinc-900/50 border border-zinc-800 animate-pulse" />
+        ))}
       </div>
     );
   }
+
+  if (loadError) {
+    return <div className="text-center py-12 text-sm text-red-400">{loadError}</div>;
+  }
+
+  const q = search.trim().toLowerCase();
+  const filtered = requests.filter((r) => {
+    if (statusFilter !== "all" && r.status !== statusFilter) return false;
+    if (!q) return true;
+    return (r.name || "").toLowerCase().includes(q) || (r.email || "").toLowerCase().includes(q) || (r.phone || "").includes(search.trim());
+  });
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold mb-1">{t("admin.requests.title")}</h1>
-        <p className="text-sm text-zinc-400">{requests.length} {t("admin.requests.count")}</p>
+        <p className="text-sm text-zinc-400">{filtered.length} {t("admin.requests.count")}</p>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        <input
+          type="text"
+          placeholder={t("admin.studios.request_search")}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 px-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-primary/50"
+        />
+        <div className="flex gap-2 flex-wrap">
+          {(["all", "lead", "negotiation", "development", "completed", "support"] as const).map((s) => (
+            <button key={s} onClick={() => setStatusFilter(s)} className={`text-xs px-3 py-2 rounded-lg border transition-colors ${statusFilter === s ? "bg-primary/10 text-primary border-primary/30" : "text-zinc-400 border-zinc-800 hover:text-white"}`}>
+              {s === "all" ? t("admin.payments.all") : getStatusLabel(s, t)}
+            </button>
+          ))}
+        </div>
       </div>
 
       <Card>
@@ -51,22 +86,22 @@ export default function DashboardRequestsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-800">
-                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.name")}</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.contacts")}</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.source")}</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.budget")}</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.status")}</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.date")}</th>
-                  <th className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.action")}</th>
+                  <th scope="col" className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.name")}</th>
+                  <th scope="col" className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.contacts")}</th>
+                  <th scope="col" className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.source")}</th>
+                  <th scope="col" className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.budget")}</th>
+                  <th scope="col" className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.status")}</th>
+                  <th scope="col" className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.date")}</th>
+                  <th scope="col" className="text-left p-4 text-zinc-400 font-medium">{t("admin.requests.action")}</th>
                 </tr>
               </thead>
               <tbody>
-                {requests.length === 0 ? (
+                {filtered.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="p-8 text-center text-zinc-500">{t("admin.requests.empty")}</td>
                   </tr>
                 ) : (
-                  requests.map((request) => (
+                  filtered.map((request) => (
                     <tr key={request.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
                       <td className="p-4">
                         <div className="flex items-center gap-3">

@@ -49,13 +49,13 @@ export interface DashboardStats {
 
 // Studio CRM Types
 export type SubscriptionStatus = "active" | "overdue" | "cancelled";
-export type SubscriptionPeriod = "monthly" | "quarterly" | "yearly";
+export type SubscriptionPeriod = "monthly" | "quarterly" | "yearly" | "trial";
 
 export interface Plan {
   id: string;
   created_at: string;
   name: string;
-  code: "basic" | "standard" | "premium";
+  code: "trial" | "basic" | "standard" | "premium";
   price_monthly: number;
   price_quarterly: number;
   price_yearly: number;

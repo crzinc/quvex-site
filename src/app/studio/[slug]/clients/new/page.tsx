@@ -35,6 +35,10 @@ export default function StudioNewClientPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.name.trim()) {
+      toast.error(t("common.fill_name_email"));
+      return;
+    }
     setLoading(true);
 
     const { data: studio } = await supabase.current
@@ -62,6 +66,19 @@ export default function StudioNewClientPage() {
       const current = countResult.count ?? 0;
       if (maxClients !== null && maxClients !== undefined && current >= maxClients) {
         toast.error(t("subscription.clients_limit_reached"));
+        setLoading(false);
+        return;
+      }
+    }
+
+    if (form.phone.trim()) {
+      const { count } = await supabase.current
+        .from("studio_clients")
+        .select("id", { count: "exact", head: true })
+        .eq("studio_id", studio.id)
+        .eq("phone", form.phone.trim());
+      if (count && count > 0) {
+        toast.error(t("studio.clients.duplicate_phone"));
         setLoading(false);
         return;
       }

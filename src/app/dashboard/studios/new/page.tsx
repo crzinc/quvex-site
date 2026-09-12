@@ -136,9 +136,13 @@ export default function DashboardNewStudioPage() {
   }, []);
 
   const selectedPlan = plans.find((p) => p.id === form.plan_id);
-  const selectedPeriod = PERIODS.find((p) => p.value === form.subscription_period)!;
+  const isTrialPlan = selectedPlan?.code === "trial";
+  const effectivePeriod: SubscriptionPeriod = isTrialPlan ? "trial" : form.subscription_period;
+  const selectedPeriod = PERIODS.find((p) => p.value === effectivePeriod);
   const planPrice = selectedPlan
-    ? Number(selectedPlan[selectedPeriod.value === "monthly" ? "price_monthly" : selectedPeriod.value === "quarterly" ? "price_quarterly" : "price_yearly"])
+    ? isTrialPlan
+      ? 0
+      : Number(selectedPeriod?.value === "monthly" ? selectedPlan.price_monthly : selectedPeriod?.value === "quarterly" ? selectedPlan.price_quarterly : selectedPlan.price_yearly)
     : 0;
 
   const applyRequest = (client: Client | null) => {
@@ -169,7 +173,7 @@ export default function DashboardNewStudioPage() {
       description: form.description,
       password: form.password || undefined,
       plan_id: form.plan_id,
-      subscription_period: form.subscription_period,
+      subscription_period: effectivePeriod,
     };
 
     const res = await createStudioAccount(input);
@@ -353,43 +357,49 @@ export default function DashboardNewStudioPage() {
                 >
                   <p className="font-medium mb-1">{plan.name}</p>
                   <p className="text-xs text-zinc-500 mb-3">{t("subscription.max_clients_label")}: {plan.max_clients ? plan.max_clients : "∞"}</p>
-                  <p className="text-lg font-bold text-primary">{formatCurrency(plan.price_monthly)}<span className="text-xs text-zinc-500 font-normal"> / {t("subscription.month")}</span></p>
+                  {plan.code === "trial" ? (
+                    <p className="text-lg font-bold text-primary">{t("subscription.free_trial")}</p>
+                  ) : (
+                    <p className="text-lg font-bold text-primary">{formatCurrency(plan.price_monthly)}<span className="text-xs text-zinc-500 font-normal"> / {t("subscription.month")}</span></p>
+                  )}
                 </button>
               ))}
             </div>
 
-            <div>
-              <p className="text-sm font-medium mb-2">{t("subscription.period_title")}</p>
-              <div className="grid sm:grid-cols-3 gap-3">
-                {PERIODS.map((period) => (
-                  <button
-                    key={period.value}
-                    type="button"
-                    onClick={() => setForm({ ...form, subscription_period: period.value })}
-                    className={cn(
-                      "text-left p-3 rounded-xl border transition-all duration-200",
-                      form.subscription_period === period.value
-                        ? "bg-primary/10 border-primary/40 ring-1 ring-primary/25"
-                        : "bg-zinc-900/40 border-zinc-800 hover:border-zinc-700",
-                    )}
-                  >
-                    <p className="text-sm font-medium">{t(period.labelKey)}</p>
-                    <p className="text-xs text-zinc-500">
-                      {period.discount > 0
-                        ? t("subscription.save", { discount: period.discount })
-                        : `${period.months} ${t("subscription.month")}`}
-                    </p>
-                  </button>
-                ))}
+            {!isTrialPlan && (
+              <div>
+                <p className="text-sm font-medium mb-2">{t("subscription.period_title")}</p>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  {PERIODS.map((period) => (
+                    <button
+                      key={period.value}
+                      type="button"
+                      onClick={() => setForm({ ...form, subscription_period: period.value })}
+                      className={cn(
+                        "text-left p-3 rounded-xl border transition-all duration-200",
+                        form.subscription_period === period.value
+                          ? "bg-primary/10 border-primary/40 ring-1 ring-primary/25"
+                          : "bg-zinc-900/40 border-zinc-800 hover:border-zinc-700",
+                      )}
+                    >
+                      <p className="text-sm font-medium">{t(period.labelKey)}</p>
+                      <p className="text-xs text-zinc-500">
+                        {period.discount > 0
+                          ? t("subscription.save", { discount: period.discount })
+                          : `${period.months} ${t("subscription.month")}`}
+                      </p>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {selectedPlan && (
               <div className="p-4 rounded-xl bg-zinc-800/50 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">{t("subscription.payable")}</p>
                   <p className="text-xs text-zinc-500">
-                    {selectedPlan.name} · {t(selectedPeriod.labelKey)}
+                    {selectedPlan.name}{!isTrialPlan && selectedPeriod ? ` · ${t(selectedPeriod.labelKey)}` : ""}
                   </p>
                 </div>
                 <p className="text-xl font-bold">{formatCurrency(planPrice)}</p>
