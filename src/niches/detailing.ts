@@ -1,5 +1,5 @@
 import type { NicheConfig } from "./types";
-import { vehicleFields } from "./shared";
+import { defaultRoles, vehicleFields } from "./shared";
 
 export const detailing: NicheConfig = {
   id: "detailing",
@@ -32,6 +32,7 @@ export const detailing: NicheConfig = {
     { id: "ceramic", title: { az: "Keramik örtüyün yenilənməsi", ru: "Обновление керамики" }, months: 12 },
     { id: "wash", title: { az: "Detailing yuma", ru: "Детейлинг-мойка" }, months: 1 },
   ],
+  roles: defaultRoles,
   catalog: [
     { kind: "service", name: { az: "Kuzovun polirovkası", ru: "Полировка кузова" }, category: { az: "Kuzov", ru: "Кузов" }, price: 250, durationMin: 480 },
     { kind: "service", name: { az: "Keramik örtük", ru: "Керамическое покрытие" }, category: { az: "Qoruma", ru: "Защита" }, price: 450, durationMin: 600 },

@@ -1,3 +1,5 @@
+import type { PlanId } from "@/config/plans";
+
 export interface Tenant {
   id: string;
   slug: string;
@@ -6,7 +8,8 @@ export interface Tenant {
   city: string | null;
   phone: string | null;
   address: string | null;
-  plan: "trial" | "start" | "pro";
+  plan: PlanId;
+  user_limit: number | null;
   status: "active" | "suspended";
   trial_ends_at: string;
   paid_until: string | null;

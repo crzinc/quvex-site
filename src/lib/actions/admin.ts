@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
+import { planUserLimit } from "@/config/plans";
 import type { ActionState } from "@/lib/types";
 
 /* Platform-admin mutations. RLS additionally restricts these tables to is_platform_admin(). */
@@ -13,20 +14,34 @@ export async function setTenantStatus(id: string, status: "active" | "suspended"
   revalidatePath("/admin", "layout");
 }
 
-const trialSchema = z.object({ trial_ends_at: z.iso.date() });
+const subscriptionSchema = z.object({
+  plan: z.enum(["trial", "solo", "start", "pro", "business"]),
+  trial_ends_at: z.iso.date().optional().or(z.literal("")),
+  paid_until: z.iso.date().optional().or(z.literal("")),
+});
 
-export async function setTrialEnd(id: string, _: ActionState, formData: FormData): Promise<ActionState> {
+/** Change plan, dates and seat limit directly, without recording a payment (e.g. a gift month or a correction). */
+export async function setSubscription(id: string, _: ActionState, formData: FormData): Promise<ActionState> {
   const { supabase, t } = await requireAdmin();
-  const parsed = trialSchema.safeParse(Object.fromEntries(formData));
+  const parsed = subscriptionSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: t.common.error };
-  const { error } = await supabase.from("tenants").update({ trial_ends_at: `${parsed.data.trial_ends_at}T23:59:59+04:00` }).eq("id", id);
+  const { plan, trial_ends_at, paid_until } = parsed.data;
+  const { error } = await supabase
+    .from("tenants")
+    .update({
+      plan,
+      user_limit: planUserLimit(plan),
+      ...(trial_ends_at ? { trial_ends_at: `${trial_ends_at}T23:59:59+04:00` } : {}),
+      paid_until: paid_until ? `${paid_until}T23:59:59+04:00` : null,
+    })
+    .eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/admin", "layout");
   return { ok: true };
 }
 
 const billingSchema = z.object({
-  plan: z.enum(["start", "pro"]),
+  plan: z.enum(["solo", "start", "pro", "business"]),
   months: z.coerce.number().int().min(1).max(36),
   amount: z.coerce.number().min(0).max(1_000_000),
   method: z.string().trim().max(40).optional(),
@@ -46,7 +61,7 @@ export async function recordBilling(id: string, _: ActionState, formData: FormDa
 
   const { error } = await supabase.from("billing_payments").insert({ tenant_id: id, plan, months, amount, method, note });
   if (error) return { error: error.message };
-  await supabase.from("tenants").update({ plan, status: "active", paid_until: start.toISOString() }).eq("id", id);
+  await supabase.from("tenants").update({ plan, user_limit: planUserLimit(plan), status: "active", paid_until: start.toISOString() }).eq("id", id);
   revalidatePath("/admin", "layout");
   return { ok: true };
 }

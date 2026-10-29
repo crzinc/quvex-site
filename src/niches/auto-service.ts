@@ -1,5 +1,5 @@
 import type { NicheConfig } from "./types";
-import { vehicleFields } from "./shared";
+import { defaultRoles, vehicleFields } from "./shared";
 
 export const autoService: NicheConfig = {
   id: "auto_service",
@@ -37,6 +37,7 @@ export const autoService: NicheConfig = {
     { id: "tires", title: { az: "Mövsümi təkər dəyişimi", ru: "Сезонная смена шин" }, months: 6 },
     { id: "brakes", title: { az: "Əyləc sisteminin yoxlanışı", ru: "Проверка тормозной системы" }, months: 12 },
   ],
+  roles: defaultRoles,
   catalog: [
     { kind: "service", name: { az: "Kompüter diaqnostikası", ru: "Компьютерная диагностика" }, category: { az: "Diaqnostika", ru: "Диагностика" }, price: 20, durationMin: 30 },
     { kind: "service", name: { az: "Yağ və filtrin dəyişdirilməsi", ru: "Замена масла и фильтра" }, category: { az: "Texniki xidmət", ru: "ТО" }, price: 15, durationMin: 30 },

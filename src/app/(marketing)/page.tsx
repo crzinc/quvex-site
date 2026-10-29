@@ -136,7 +136,7 @@ export default async function LandingPage() {
             <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">{l.pricingTitle}</h2>
             <p className="mt-3 text-fg-muted">{l.pricingSubtitle}</p>
           </div>
-          <div className="mx-auto mt-12 grid max-w-3xl gap-4 sm:grid-cols-2">
+          <div className="mx-auto mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {PLANS.map((plan) => (
               <div
                 key={plan.id}
@@ -166,6 +166,7 @@ export default async function LandingPage() {
               </div>
             ))}
           </div>
+          <p className="mt-6 text-center text-sm text-fg-muted">{l.pricingPeriods}</p>
         </div>
       </section>
 

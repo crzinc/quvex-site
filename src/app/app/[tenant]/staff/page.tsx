@@ -4,7 +4,8 @@ import { term } from "@/niches";
 import { Badge, Card, EmptyState, Field, Input, PageHeader } from "@/components/ui";
 import { ActionForm, SubmitButton } from "@/components/ui/forms";
 import { saveStaff } from "@/lib/actions/crm";
-import { money, startOfMonth } from "@/lib/utils";
+import { money } from "@/lib/utils";
+import { earnings, monthLabour } from "@/lib/payroll";
 import type { Dictionary } from "@/i18n/dictionaries";
 import type { Staff } from "@/lib/types";
 
@@ -30,29 +31,10 @@ function StaffFields({ t, staff }: { t: Dictionary; staff?: Staff }) {
 export default async function StaffPage({ params }: PageProps<"/app/[tenant]/staff">) {
   const { tenant: slug } = await params;
   const { supabase, tenant, niche, locale, t } = await requirePermission(slug, "manageStaff");
-  const doneIds = niche.statuses.filter((s) => s.kind === "done").map((s) => s.id);
-
-  const [staff, closed] = await Promise.all([
+  const [staff, labour] = await Promise.all([
     supabase.from("staff").select("*").eq("tenant_id", tenant.id).order("active", { ascending: false }).order("name").returns<Staff[]>(),
-    supabase
-      .from("orders")
-      .select("staff_id, discount_percent, order_items(kind, qty, price, staff_id)")
-      .eq("tenant_id", tenant.id)
-      .in("status", doneIds)
-      .gte("closed_at", startOfMonth().toISOString()),
+    monthLabour(supabase, tenant.id, niche),
   ]);
-
-  // Payroll: labour (service lines) attributed to the line's master, falling back to the order's master.
-  const labour = new Map<string, { sum: number; count: number }>();
-  for (const order of closed.data ?? []) {
-    const factor = 1 - Number(order.discount_percent ?? 0) / 100;
-    for (const item of order.order_items ?? []) {
-      const who = item.staff_id ?? order.staff_id;
-      if (!who || item.kind !== "service") continue;
-      const cur = labour.get(who) ?? { sum: 0, count: 0 };
-      labour.set(who, { sum: cur.sum + Number(item.qty) * Number(item.price) * factor, count: cur.count + 1 });
-    }
-  }
 
   return (
     <>
@@ -76,7 +58,7 @@ export default async function StaffPage({ params }: PageProps<"/app/[tenant]/sta
           <ul className="divide-y divide-border">
             {staff.data.map((s) => {
               const l = labour.get(s.id) ?? { sum: 0, count: 0 };
-              const earned = (l.sum * Number(s.commission_percent)) / 100;
+              const earned = earnings(l, s.commission_percent);
               return (
                 <li key={s.id}>
                   <details>

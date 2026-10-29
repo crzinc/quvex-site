@@ -33,13 +33,31 @@ export const requireTenant = cache(async (slug: string) => {
 
   // Platform admins act as owners of any tenant (RLS mirrors this via has_role()).
   const [{ data: membership }, profile] = await Promise.all([
-    supabase.from("memberships").select("role").eq("tenant_id", tenant.id).eq("user_id", user.id).maybeSingle<{ role: Role }>(),
+    supabase
+      .from("memberships")
+      .select("role, staff_id")
+      .eq("tenant_id", tenant.id)
+      .eq("user_id", user.id)
+      .maybeSingle<{ role: Role; staff_id: string | null }>(),
     getProfile(),
   ]);
-  const role: Role = profile?.is_platform_admin ? "owner" : (membership?.role ?? "staff");
+  const role: Role = membership?.role ?? (profile?.is_platform_admin ? "owner" : "staff");
+  const niche = getNiche(tenant.niche);
 
   const { locale, t } = await getI18n();
-  return { supabase, user, tenant, niche: getNiche(tenant.niche), locale, t, role, can: permissions(role) };
+  return {
+    supabase,
+    user,
+    tenant,
+    niche,
+    locale,
+    t,
+    role,
+    /** The signed-in user's row in the masters list, if linked. */
+    staffId: membership?.staff_id ?? null,
+    workspace: niche.roles[role],
+    can: permissions(profile?.is_platform_admin ? "owner" : role),
+  };
 });
 
 /** UI-level permissions. The database enforces the same rules through RLS (see has_role()). */
@@ -62,6 +80,8 @@ export async function requirePermission(slug: string, key: keyof ReturnType<type
   if (!ctx.can[key]) notFound();
   return ctx;
 }
+
+export type TenantContext = Awaited<ReturnType<typeof requireTenant>>;
 
 export async function requireAdmin() {
   const profile = await getProfile();

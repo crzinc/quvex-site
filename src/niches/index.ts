@@ -38,3 +38,11 @@ export function hasModule(modules: string[] | null | undefined, id: ModuleId): b
 export function term(niche: NicheConfig, key: keyof NicheConfig["terms"], locale: Locale): string {
   return niche.terms[key][locale];
 }
+
+/** The status a job moves to with one tap: the next open step, then the first "done" status. */
+export function nextStatus(niche: NicheConfig, current: string): OrderStatus | null {
+  const flow = niche.statuses.filter((s) => s.kind !== "cancelled");
+  const i = flow.findIndex((s) => s.id === current);
+  if (i < 0 || flow[i].kind !== "open") return null;
+  return flow[i + 1] ?? null;
+}

@@ -35,6 +35,7 @@ export default async function AdminTenants({ searchParams }: PageProps<"/admin/t
                 <Th>{t.auth.businessName}</Th>
                 <Th>{t.admin.owner}</Th>
                 <Th>{t.common.status}</Th>
+                <Th className="text-right">{t.admin.users}</Th>
                 <Th className="text-right">{t.admin.clientsCount}</Th>
                 <Th className="text-right">{t.admin.ordersCount}</Th>
                 <Th>{t.admin.paidUntil}</Th>
@@ -55,6 +56,9 @@ export default async function AdminTenants({ searchParams }: PageProps<"/admin/t
                   <Td>
                     <TenantStateBadge state={tenantState(tn)} t={t} />
                     <div className="mt-1 text-xs text-fg-muted">{t.plans[tn.plan]}</div>
+                  </Td>
+                  <Td className={tn.user_limit !== null && tn.memberships.length > tn.user_limit ? "text-right text-amber-600 tabular-nums" : "text-right tabular-nums"}>
+                    {tn.memberships.length}/{tn.user_limit ?? "∞"}
                   </Td>
                   <Td className="text-right tabular-nums">{tn.clients[0]?.count ?? 0}</Td>
                   <Td className="text-right tabular-nums">{tn.orders[0]?.count ?? 0}</Td>

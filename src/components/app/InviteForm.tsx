@@ -13,16 +13,25 @@ export function InviteForm({
   action,
   t,
   businessName,
+  staff,
+  full,
 }: {
   action: (s: ActionState, f: FormData) => Promise<ActionState>;
   t: Dictionary;
   businessName: string;
+  /** Masters not yet linked to a login, to attach the new account to. */
+  staff: { id: string; name: string }[];
+  /** Message shown instead of the form when the plan's seats are used up. */
+  full?: string;
 }) {
   const [state, formAction] = useActionState(action, {});
   const [copied, setCopied] = useState(false);
   const [role, setRole] = useState<"staff" | "manager">("staff");
   const [name, setName] = useState("");
+  const [staffId, setStaffId] = useState("");
   const link = state.data?.link;
+
+  if (full && !link) return <p className="text-sm text-fg-muted">{full}</p>;
 
   const waText = link
     ? fill(t.settings.waInvite, { name: name ? `, ${name}` : "", business: businessName, role: t.settings.roles[role].toLowerCase(), link })
@@ -38,9 +47,29 @@ export function InviteForm({
             <option value="manager">{t.settings.roles.manager}</option>
           </Select>
         </Field>
-        <Field label={t.settings.inviteName}>
-          <Input name="name" value={name} onChange={(e) => setName(e.target.value)} />
-        </Field>
+        {role === "staff" && staff.length > 0 ? (
+          <Field label={t.settings.linkStaff}>
+            <Select
+              name="staff_id"
+              value={staffId}
+              onChange={(e) => {
+                setStaffId(e.target.value);
+                setName(staff.find((s) => s.id === e.target.value)?.name ?? "");
+              }}
+            >
+              <option value="">{t.settings.newStaffRecord}</option>
+              {staff.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </Select>
+          </Field>
+        ) : null}
+        {(role !== "staff" || staffId === "") && (
+          <Field label={t.settings.inviteName}>
+            <Input name="name" value={name} onChange={(e) => setName(e.target.value)} />
+          </Field>
+        )}
+        {role === "staff" && staffId !== "" && <input type="hidden" name="name" value={name} />}
       </div>
       <p className="text-xs text-fg-muted">{t.settings.roleHints[role]}</p>
       <div>

@@ -9,8 +9,9 @@ import { Badge, Button, ButtonLink } from "@/components/ui";
 import { InviteRegisterForm } from "@/components/auth/InviteRegisterForm";
 import type { Role } from "@/lib/types";
 
-export default async function InvitePage({ params }: PageProps<"/invite/[token]">) {
+export default async function InvitePage({ params, searchParams }: PageProps<"/invite/[token]">) {
   const { token } = await params;
+  const limitError = (await searchParams).error === "limit";
   const { t } = await getI18n();
   const supabase = await createClient();
   const { data } = await supabase.rpc("invitation_preview", { p_token: token });
@@ -33,6 +34,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
         {t.invite.as}: <Badge tone="orange">{t.settings.roles[invite.role]}</Badge>
       </div>
       <p className="mt-2 text-sm text-fg-muted">{t.settings.roleHints[invite.role]}</p>
+      {limitError && <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">{t.invite.limitError}</p>}
 
       {user ? (
         <div className="mt-8">

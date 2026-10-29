@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getProfile, isTrialExpired, requireTenant } from "@/lib/auth";
 import { hasModule, term } from "@/niches";
+import type { NavId } from "@/niches/types";
 import { Sidebar, type NavItem } from "@/components/app/Sidebar";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { fill } from "@/i18n/dictionaries";
@@ -13,24 +14,28 @@ export async function generateMetadata({ params }: LayoutProps<"/app/[tenant]">)
 
 export default async function TenantLayout({ children, params }: LayoutProps<"/app/[tenant]">) {
   const { tenant: slug } = await params;
-  const { supabase, tenant, niche, locale, t, can } = await requireTenant(slug);
+  const { supabase, tenant, niche, locale, t, can, workspace } = await requireTenant(slug);
   const profile = await getProfile();
   const base = `/app/${slug}`;
   const m = tenant.modules;
 
-  const { count: dueReminders } = hasModule(m, "reminders")
+  const { count: dueReminders } = hasModule(m, "reminders") && workspace.nav.includes("reminders")
     ? await supabase.from("reminders").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).eq("status", "pending").lte("due_at", bakuToday())
     : { count: 0 };
 
+  // Menu = the role's template from the niche, filtered by enabled modules and permissions.
+  const available: Record<NavId, NavItem | null> = {
+    dashboard: { id: "dashboard", href: base, label: workspace.homeLabel[locale] },
+    orders: hasModule(m, "orders") ? { id: "orders", href: `${base}/orders`, label: term(niche, "orders", locale) } : null,
+    clients: { id: "clients", href: `${base}/clients`, label: t.nav.clients },
+    reminders: hasModule(m, "reminders") ? { id: "reminders", href: `${base}/reminders`, label: t.nav.reminders, badge: dueReminders ?? 0 } : null,
+    catalog: { id: "catalog", href: `${base}/catalog`, label: hasModule(m, "inventory") ? t.nav.catalog : t.catalog.services },
+    staff: hasModule(m, "staff") && can.manageStaff ? { id: "staff", href: `${base}/staff`, label: term(niche, "staff", locale) } : null,
+    finance: hasModule(m, "finance") && can.viewFinance ? { id: "finance", href: `${base}/finance`, label: t.nav.finance } : null,
+    settings: can.settings ? { id: "settings", href: `${base}/settings`, label: t.nav.settings } : null,
+  };
   const items: NavItem[] = [
-    { id: "dashboard", href: base, label: t.nav.dashboard },
-    ...(hasModule(m, "orders") ? [{ id: "orders", href: `${base}/orders`, label: term(niche, "orders", locale) } as NavItem] : []),
-    { id: "clients", href: `${base}/clients`, label: t.nav.clients },
-    ...(hasModule(m, "reminders") ? [{ id: "reminders", href: `${base}/reminders`, label: t.nav.reminders, badge: dueReminders ?? 0 } as NavItem] : []),
-    { id: "catalog", href: `${base}/catalog`, label: hasModule(m, "inventory") ? t.nav.catalog : t.catalog.services },
-    ...(hasModule(m, "staff") && can.manageStaff ? [{ id: "staff", href: `${base}/staff`, label: term(niche, "staff", locale) } as NavItem] : []),
-    ...(hasModule(m, "finance") && can.viewFinance ? [{ id: "finance", href: `${base}/finance`, label: t.nav.finance } as NavItem] : []),
-    ...(can.settings ? [{ id: "settings", href: `${base}/settings`, label: t.nav.settings } as NavItem] : []),
+    ...workspace.nav.flatMap((id) => (available[id] ? [available[id]] : [])),
     ...(profile?.is_platform_admin ? [{ id: "admin", href: "/admin", label: t.nav.admin } as NavItem] : []),
   ];
 

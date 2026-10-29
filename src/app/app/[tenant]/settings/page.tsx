@@ -4,7 +4,8 @@ import { Badge, Card, CardHeader, Field, Input, PageHeader, Textarea } from "@/c
 import { ActionForm, AutoSubmitSelect, ConfirmForm, SubmitButton } from "@/components/ui/forms";
 import { InviteForm } from "@/components/app/InviteForm";
 import { updateTenant } from "@/lib/actions/crm";
-import { createInvitation, removeMember, revokeInvitation, setMemberRole } from "@/lib/actions/team";
+import { createInvitation, removeMember, revokeInvitation, setMemberRole, setMemberStaff } from "@/lib/actions/team";
+import { fill } from "@/i18n/dictionaries";
 import { planPrice } from "@/config/plans";
 import { daysAgo, formatDate } from "@/lib/utils";
 import type { Invitation, Role } from "@/lib/types";
@@ -15,8 +16,8 @@ export default async function SettingsPage({ params }: PageProps<"/app/[tenant]/
   const { tenant: slug } = await params;
   const { supabase, tenant, niche, locale, t, user } = await requirePermission(slug, "settings");
 
-  const [{ data: members }, { data: invites }] = await Promise.all([
-    supabase.from("memberships").select("user_id, role, profiles(full_name, email)").eq("tenant_id", tenant.id).order("created_at"),
+  const [{ data: members }, { data: invites }, { data: staffList }] = await Promise.all([
+    supabase.from("memberships").select("user_id, role, staff_id, profiles(full_name, email)").eq("tenant_id", tenant.id).order("created_at"),
     supabase
       .from("invitations")
       .select("*")
@@ -25,7 +26,13 @@ export default async function SettingsPage({ params }: PageProps<"/app/[tenant]/
       .gt("expires_at", daysAgo(0).toISOString())
       .order("created_at", { ascending: false })
       .returns<Invitation[]>(),
+    supabase.from("staff").select("id, name").eq("tenant_id", tenant.id).eq("active", true).order("name"),
   ]);
+
+  const used = (members?.length ?? 0) + (invites?.length ?? 0);
+  const full = tenant.user_limit !== null && used >= tenant.user_limit;
+  const linked = new Set((members ?? []).map((m) => m.staff_id).filter(Boolean));
+  const unlinkedStaff = (staffList ?? []).filter((s) => !linked.has(s.id));
 
   return (
     <>
@@ -77,7 +84,14 @@ export default async function SettingsPage({ params }: PageProps<"/app/[tenant]/
 
         <div className="grid content-start gap-6">
           <Card>
-            <CardHeader title={t.settings.team} />
+            <CardHeader
+              title={t.settings.team}
+              action={
+                <span className={full ? "text-xs font-medium text-amber-600" : "text-xs text-fg-muted"}>
+                  {fill(t.settings.seats, { used, limit: tenant.user_limit ?? t.settings.unlimited })}
+                </span>
+              }
+            />
             <ul className="divide-y divide-border">
               {(members ?? []).map((m) => {
                 const p = m.profiles as unknown as { full_name: string | null; email: string | null } | null;
@@ -89,6 +103,18 @@ export default async function SettingsPage({ params }: PageProps<"/app/[tenant]/
                         {p?.full_name ?? p?.email} {isMe && <span className="font-normal text-fg-subtle">({t.settings.you})</span>}
                       </span>
                       <span className="block truncate text-xs text-fg-muted">{p?.email}</span>
+                      {m.role === "staff" && !isMe && (
+                        <form action={setMemberStaff.bind(null, slug, m.user_id)} className="mt-1.5">
+                          <AutoSubmitSelect name="staff_id" defaultValue={m.staff_id ?? ""} aria-label={t.settings.linkedAs} className="h-7 text-xs">
+                            <option value="">{t.settings.linkedAs}: —</option>
+                            {(staffList ?? [])
+                              .filter((s) => s.id === m.staff_id || !linked.has(s.id))
+                              .map((s) => (
+                                <option key={s.id} value={s.id}>{t.settings.linkedAs}: {s.name}</option>
+                              ))}
+                          </AutoSubmitSelect>
+                        </form>
+                      )}
                     </span>
                     {isMe ? (
                       <Badge>{t.settings.roles[m.role as Role]}</Badge>
@@ -114,7 +140,13 @@ export default async function SettingsPage({ params }: PageProps<"/app/[tenant]/
             </ul>
             <div className="border-t border-border p-4 sm:p-5">
               <h3 className="mb-2 text-sm font-semibold">{t.settings.invite}</h3>
-              <InviteForm action={createInvitation.bind(null, slug)} t={t} businessName={tenant.name} />
+              <InviteForm
+                action={createInvitation.bind(null, slug)}
+                t={t}
+                businessName={tenant.name}
+                staff={unlinkedStaff}
+                full={full ? fill(t.settings.seatsFull, { limit: tenant.user_limit ?? 0 }) : undefined}
+              />
             </div>
             {!!invites?.length && (
               <div className="border-t border-border px-4 py-3 sm:px-5">

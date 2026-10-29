@@ -3,11 +3,12 @@ import { ExternalLink } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { ADMIN_TENANT_SELECT, owner, tenantState, type AdminTenant } from "@/lib/admin";
 import { getNiche } from "@/niches";
-import { PLANS } from "@/config/plans";
-import { Button, ButtonLink, Card, CardHeader, EmptyState, Field, Input, PageHeader, Select, Stat } from "@/components/ui";
+import { PLANS, type PlanId } from "@/config/plans";
+import { Badge, Button, ButtonLink, Card, CardHeader, EmptyState, Field, Input, PageHeader, Select, Stat } from "@/components/ui";
 import { ActionForm, SubmitButton } from "@/components/ui/forms";
 import { TenantStateBadge } from "@/components/admin/TenantStateBadge";
-import { recordBilling, setTenantStatus, setTrialEnd } from "@/lib/actions/admin";
+import { recordBilling, setSubscription, setTenantStatus } from "@/lib/actions/admin";
+import { BillingForm } from "@/components/admin/BillingForm";
 import { daysAgo, formatDate, money } from "@/lib/utils";
 
 export default async function AdminTenantPage({ params }: PageProps<"/admin/tenants/[id]">) {
@@ -24,6 +25,8 @@ export default async function AdminTenantPage({ params }: PageProps<"/admin/tena
     supabase.from("orders").select("created_at").eq("tenant_id", id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
   const o = owner(tenant);
+  const members = tenant.memberships.length;
+  const overLimit = tenant.user_limit !== null && members > tenant.user_limit;
   const state = tenantState(tenant);
 
   return (
@@ -66,7 +69,7 @@ export default async function AdminTenantPage({ params }: PageProps<"/admin/tena
                 {billing.data.map((b) => (
                   <li key={b.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm sm:px-5">
                     <span>
-                      <span className="font-medium">{t.plans[b.plan as "start" | "pro"]}</span> · {b.months} {t.admin.months.toLowerCase()}
+                      <span className="font-medium">{t.plans[b.plan as PlanId] ?? b.plan}</span> · {b.months} {t.admin.months.toLowerCase()}
                       <span className="block text-xs text-fg-muted">{formatDate(b.created_at, locale)} {b.method && `· ${b.method}`} {b.note && `· ${b.note}`}</span>
                     </span>
                     <span className="font-medium tabular-nums">{money(b.amount)}</span>
@@ -89,44 +92,40 @@ export default async function AdminTenantPage({ params }: PageProps<"/admin/tena
 
         <div className="grid content-start gap-6">
           <Card className="p-4 sm:p-5">
-            <h2 className="mb-4 text-sm font-semibold">{t.admin.recordPayment}</h2>
-            <ActionForm action={recordBilling.bind(null, id)} className="grid gap-3" successMessage={t.settings.saved}>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label={t.admin.plan}>
-                  <Select name="plan" defaultValue={tenant.plan === "trial" ? "start" : tenant.plan}>
-                    {PLANS.map((p) => (
-                      <option key={p.id} value={p.id}>{t.plans[p.id]} · {p.price} ₼</option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label={t.admin.months}>
-                  <Input name="months" type="number" min="1" max="36" defaultValue="1" required />
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label={t.common.amount}>
-                  <Input name="amount" type="number" step="0.01" min="0" required />
-                </Field>
-                <Field label={t.orders.method}>
-                  <Input name="method" placeholder="m10, Birbank…" />
-                </Field>
-              </div>
-              <Field label={t.common.notes}>
-                <Input name="note" />
+            <h2 className="text-sm font-semibold">{t.admin.subscription}</h2>
+            <div className="mt-3 flex items-center justify-between rounded-lg bg-surface-2 px-3 py-2 text-sm">
+              <span>
+                {t.plans[tenant.plan]} · {t.admin.users}: {members}/{tenant.user_limit ?? "∞"}
+              </span>
+              {overLimit && <Badge tone="amber">{t.admin.overLimit}</Badge>}
+            </div>
+            <ActionForm action={setSubscription.bind(null, id)} resetOnSuccess={false} successMessage={t.settings.saved} className="mt-4 grid gap-3">
+              <p className="text-xs text-fg-muted">{t.admin.changePlanHint}</p>
+              <Field label={t.admin.plan}>
+                <Select name="plan" defaultValue={tenant.plan}>
+                  <option value="trial">{t.plans.trial}</option>
+                  {PLANS.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {t.plans[p.id]} · {p.price} ₼ · {p.userLimit ?? "∞"} {t.admin.users.toLowerCase()}
+                    </option>
+                  ))}
+                </Select>
               </Field>
-              <SubmitButton>{t.admin.recordPayment}</SubmitButton>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label={t.admin.trialUntil}>
+                  <Input name="trial_ends_at" type="date" defaultValue={tenant.trial_ends_at.slice(0, 10)} />
+                </Field>
+                <Field label={t.admin.paidUntil}>
+                  <Input name="paid_until" type="date" defaultValue={tenant.paid_until?.slice(0, 10) ?? ""} />
+                </Field>
+              </div>
+              <SubmitButton variant="secondary">{t.admin.changePlan}</SubmitButton>
             </ActionForm>
           </Card>
-          {tenant.plan === "trial" && (
-            <Card className="p-4 sm:p-5">
-              <ActionForm action={setTrialEnd.bind(null, id)} resetOnSuccess={false} successMessage={t.settings.saved} className="grid gap-3">
-                <Field label={t.admin.trialUntil}>
-                  <Input name="trial_ends_at" type="date" defaultValue={tenant.trial_ends_at.slice(0, 10)} required />
-                </Field>
-                <SubmitButton variant="secondary">{t.common.save}</SubmitButton>
-              </ActionForm>
-            </Card>
-          )}
+          <Card className="p-4 sm:p-5">
+            <h2 className="mb-4 text-sm font-semibold">{t.admin.recordPayment}</h2>
+            <BillingForm action={recordBilling.bind(null, id)} t={t} defaultPlan={tenant.plan === "trial" ? "start" : tenant.plan} />
+          </Card>
         </div>
       </div>
     </>

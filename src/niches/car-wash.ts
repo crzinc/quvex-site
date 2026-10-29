@@ -1,5 +1,5 @@
 import type { NicheConfig } from "./types";
-import { vehicleFields } from "./shared";
+import { defaultRoles, vehicleFields } from "./shared";
 
 export const carWash: NicheConfig = {
   id: "car_wash",
@@ -26,6 +26,11 @@ export const carWash: NicheConfig = {
   ],
   modules: ["orders", "reminders", "staff", "finance"],
   reminderPresets: [{ id: "wash", title: { az: "Növbəti yuma", ru: "Следующая мойка" }, months: 1 }],
+  // Washers take the next car in line rather than assigned jobs, so their home is the queue.
+  roles: {
+    ...defaultRoles,
+    staff: { home: "board", homeLabel: { az: "Növbə", ru: "Очередь" }, nav: ["dashboard", "orders", "clients"] },
+  },
   catalog: [
     { kind: "service", name: { az: "Kuzov yuma", ru: "Мойка кузова" }, category: { az: "Yuma", ru: "Мойка" }, price: 10, durationMin: 20 },
     { kind: "service", name: { az: "Kompleks yuma", ru: "Комплексная мойка" }, category: { az: "Yuma", ru: "Мойка" }, price: 20, durationMin: 45 },

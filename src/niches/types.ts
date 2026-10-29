@@ -1,4 +1,5 @@
 import type { Locale } from "@/i18n/config";
+import type { Role } from "@/lib/types";
 
 export type Localized = Record<Locale, string>;
 
@@ -31,6 +32,18 @@ export interface CatalogSeed {
   category: Localized;
   price: number;
   durationMin?: number;
+}
+
+/** Home screen variants: business overview, order board by status, or the signed-in master's own work. */
+export type HomeView = "overview" | "board" | "my_work";
+
+export type NavId = "dashboard" | "orders" | "clients" | "reminders" | "catalog" | "staff" | "finance" | "settings";
+
+/** What a role sees: its home screen and menu. Permissions themselves are enforced in the database. */
+export interface RoleTemplate {
+  home: HomeView;
+  homeLabel: Localized;
+  nav: NavId[];
 }
 
 export interface ReminderPreset {
@@ -70,4 +83,5 @@ export interface NicheConfig {
   modules: ModuleId[];
   reminderPresets: ReminderPreset[];
   catalog: CatalogSeed[];
+  roles: Record<Role, RoleTemplate>;
 }
