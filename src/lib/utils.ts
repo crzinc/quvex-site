@@ -1,241 +1,84 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { Locale } from "@/i18n/config";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatDate(date: string | Date, locale = "ru-RU") {
-  try {
-    return new Intl.DateTimeFormat(locale, {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }).format(new Date(date));
-  } catch {
-    return String(date);
-  }
+const intlLocale = (locale: Locale) => (locale === "az" ? "az-Latn-AZ" : "ru-RU");
+
+export function money(value: number | string | null | undefined): string {
+  const n = Number(value ?? 0);
+  return `${n.toLocaleString("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).replace(/,/g, ".")} ₼`;
 }
 
-export function formatDateTime(date: string | Date, locale = "ru-RU") {
-  try {
-    return new Intl.DateTimeFormat(locale, {
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date(date));
-  } catch {
-    return String(date);
-  }
+export function formatDate(value: string | Date | null | undefined, locale: Locale, withTime = false): string {
+  if (!value) return "—";
+  const d = typeof value === "string" ? new Date(value) : value;
+  return d.toLocaleString(intlLocale(locale), {
+    day: "2-digit",
+    month: "short",
+    year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric",
+    ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
+    timeZone: "Asia/Baku",
+  });
 }
 
-export function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("az-AZ", {
-    style: "currency",
-    currency: "AZN",
-  }).format(amount);
+/** Normalise an Azerbaijani phone number to digits with country code, for wa.me links. */
+export function phoneDigits(phone: string | null | undefined): string {
+  let digits = (phone ?? "").replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (digits.startsWith("0")) digits = `994${digits.slice(1)}`;
+  if (digits.length === 9) digits = `994${digits}`;
+  return digits;
 }
 
-export function getInitials(name: string | null | undefined) {
-  if (!name || typeof name !== "string") return "?";
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  return parts
-    .map((n) => n[0])
+export function whatsappLink(phone: string | null | undefined, text: string): string | null {
+  const digits = phoneDigits(phone);
+  if (digits.length < 10) return null;
+  return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
+}
+
+const TRANSLIT: Record<string, string> = {
+  ə: "e", ı: "i", ö: "o", ü: "u", ğ: "g", ş: "s", ç: "c",
+  а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z", и: "i", й: "y", к: "k", л: "l",
+  м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "h", ц: "c", ч: "ch", ш: "sh",
+  щ: "sh", ы: "y", э: "e", ю: "yu", я: "ya",
+};
+
+export function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .split("")
+    .map((ch) => TRANSLIT[ch] ?? ch)
     .join("")
-    .toUpperCase()
-    .slice(0, 2);
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32) || "biznes";
 }
 
-export function getStatusColor(status: string) {
-  switch (status) {
-    case "lead": return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
-    case "negotiation": return "bg-blue-500/10 text-blue-400 border-blue-500/20";
-    case "development": return "bg-purple-500/10 text-purple-400 border-purple-500/20";
-    case "completed": return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
-    case "support": return "bg-cyan-500/10 text-cyan-400 border-cyan-500/20";
-    // Studio client statuses
-    case "new": return "bg-blue-500/10 text-blue-400 border-blue-500/20";
-    case "regular": return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
-    case "vip": return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
-    case "inactive": return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
-    // Appointment statuses
-    case "scheduled": return "bg-blue-500/10 text-blue-400 border-blue-500/20";
-    case "in_progress": return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
-    case "cancelled": return "bg-red-500/10 text-red-400 border-red-500/20";
-    case "no_show": return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
-    // Payment statuses
-    case "pending": return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
-    case "paid": return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
-    case "overdue": return "bg-red-500/10 text-red-400 border-red-500/20";
-    // Message statuses
-    case "resolved": return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
-    case "closed": return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
-    // Priority
-    case "low": return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
-    case "normal": return "bg-blue-500/10 text-blue-400 border-blue-500/20";
-    case "high": return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
-    case "urgent": return "bg-red-500/10 text-red-400 border-red-500/20";
-    default: return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
-  }
+export function startOfMonth(offset = 0): Date {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth() + offset, 1);
 }
 
-export function getStatusLabel(status: string, t?: (key: string) => string) {
-  const statusKeys: Record<string, string> = {
-    lead: "admin.requests.lead",
-    negotiation: "admin.requests.negotiation",
-    development: "admin.requests.development",
-    completed: "appointment.completed",
-    support: "admin.requests.support",
-    new: "status.new",
-    regular: "status.regular",
-    vip: "status.vip",
-    inactive: "status.inactive",
-    scheduled: "appointment.scheduled",
-    in_progress: "appointment.in_progress",
-    cancelled: "appointment.cancelled",
-    no_show: "appointment.no_show",
-    pending: "payment_status.pending",
-    paid: "payment_status.paid",
-    overdue: "payment_status.overdue",
-    resolved: "message_status.resolved",
-    closed: "message_status.closed",
-    low: "priority.low",
-    normal: "priority.normal",
-    high: "priority.high",
-    urgent: "priority.urgent",
-  };
-  if (t && statusKeys[status]) return t(statusKeys[status]);
-  switch (status) {
-    case "lead": return "Лид";
-    case "negotiation": return "Переговоры";
-    case "development": return "В разработке";
-    case "completed": return "Завершён";
-    case "support": return "Поддержка";
-    case "new": return "Новый";
-    case "regular": return "Постоянный";
-    case "vip": return "VIP";
-    case "inactive": return "Неактивный";
-    case "scheduled": return "Запланировано";
-    case "in_progress": return "В работе";
-    case "cancelled": return "Отменено";
-    case "no_show": return "Неявка";
-    case "pending": return "Ожидает";
-    case "paid": return "Оплачено";
-    case "overdue": return "Просрочено";
-    case "resolved": return "Решено";
-    case "closed": return "Закрыто";
-    case "low": return "Низкий";
-    case "normal": return "Обычный";
-    case "high": return "Высокий";
-    case "urgent": return "Срочный";
-    default: return status;
-  }
+export function bakuToday(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Baku" });
 }
 
-export function getQuizBudgetLabel(value: string, t?: (key: string) => string) {
-  const budgetKeys: Record<string, string> = {
-    "0-100": "quiz.q3_opt1",
-    "100-300": "quiz.q3_opt2",
-    "300-600": "quiz.q3_opt3",
-    "600plus": "quiz.q3_opt4",
-  };
-  const key = budgetKeys[value];
-  if (t && key) return t(key);
-  return value;
+export function daysAgo(days: number): Date {
+  return new Date(Date.now() - days * 86_400_000);
 }
 
-export function getPaymentMethodLabel(method: string, t?: (key: string) => string) {
-  if (t) return t(`payment_method.${method}`);
-  switch (method) {
-    case "cash": return "Наличные";
-    case "card": return "Карта";
-    case "transfer": return "Перевод";
-    case "other": return "Другое";
-    default: return method;
-  }
+export function daysUntil(value: string | Date): number {
+  return Math.ceil((new Date(value).getTime() - Date.now()) / 86_400_000);
 }
 
-export function getPriorityColor(priority: string) {
-  switch (priority) {
-    case "low": return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
-    case "normal": return "bg-blue-500/10 text-blue-400 border-blue-500/20";
-    case "high": return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
-    case "urgent": return "bg-red-500/10 text-red-400 border-red-500/20";
-    default: return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
-  }
-}
-
-export function getCategoryLabel(category: string, t?: (key: string) => string) {
-  const categoryKeys: Record<string, string> = {
-    detailing: "service_category.detailing",
-    wash: "service_category.wash",
-    protection: "service_category.protection",
-    interior: "service_category.interior",
-    exterior: "service_category.exterior",
-    service: "category.service",
-    product: "category.product",
-    subscription: "category.subscription",
-    other: "category.other",
-  };
-  if (t && categoryKeys[category]) return t(categoryKeys[category]);
-  switch (category) {
-    case "detailing": return "Детейлинг";
-    case "wash": return "Мойка";
-    case "protection": return "Защита";
-    case "interior": return "Интерьер";
-    case "exterior": return "Экстерьер";
-    case "service": return "Услуга";
-    case "product": return "Товар";
-    case "subscription": return "Подписка";
-    case "other": return "Другое";
-    default: return category;
-  }
-}
-
-export interface StudioTheme {
-  primary: string;
-  primary_dark: string;
-  primary_light: string;
-}
-
-export function getStudioTheme(settings?: Record<string, unknown> | null): StudioTheme {
-  return {
-    primary: (settings?.primary_color as string) || "#a855f7",
-    primary_dark: (settings?.primary_dark as string) || "#7c3aed",
-    primary_light: (settings?.primary_light as string) || "#c084fc",
-  };
-}
-
-function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
-  const clean = hex.replace("#", "").trim();
-  if (!/^[0-9a-fA-F]{6}$/.test(clean)) return null;
-  const num = parseInt(clean, 16);
-  return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
-}
-
-export function shadeColor(hex: string, percent: number): string {
-  const rgb = hexToRgb(hex);
-  if (!rgb) return hex;
-  const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
-  const factor = 1 + percent / 100;
-  const toHex = (v: number) => clamp(v).toString(16).padStart(2, "0");
-  return `#${toHex(rgb.r * factor)}${toHex(rgb.g * factor)}${toHex(rgb.b * factor)}`;
-}
-
-export function deriveThemeColors(primary: string): StudioTheme {
-  return {
-    primary,
-    primary_dark: shadeColor(primary, -25),
-    primary_light: shadeColor(primary, 25),
-  };
-}
-
-export function themeVariables(theme: StudioTheme): Record<string, string> {
-  return {
-    "--color-primary": theme.primary,
-    "--color-primary-dark": theme.primary_dark,
-    "--color-primary-light": theme.primary_light,
-  };
+/** Public origin: explicit env, else Vercel's production domain, else local dev. */
+export function siteUrl(): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  return "http://localhost:3000";
 }
