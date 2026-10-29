@@ -14,7 +14,7 @@ import type { Asset, Client, Reminder } from "@/lib/types";
 
 export default async function ClientPage({ params }: PageProps<"/app/[tenant]/clients/[id]">) {
   const { tenant: slug, id } = await params;
-  const { supabase, tenant, niche, locale, t } = await requireTenant(slug);
+  const { supabase, tenant, niche, locale, t, can } = await requireTenant(slug);
   const base = `/app/${slug}`;
 
   const { data: client } = await supabase.from("clients").select("*").eq("tenant_id", tenant.id).eq("id", id).maybeSingle<Client>();
@@ -81,11 +81,13 @@ export default async function ClientPage({ params }: PageProps<"/app/[tenant]/cl
                         {[a.identifier, a.attributes?.year, a.attributes?.mileage && `${a.attributes.mileage} km`, a.attributes?.vin].filter(Boolean).join(" · ")}
                       </div>
                     </div>
-                    <ConfirmForm action={deleteAsset.bind(null, slug, a.id)} message={t.common.confirmDelete}>
-                      <button type="submit" className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-red-600" aria-label={t.common.delete}>
-                        <X className="size-4" />
-                      </button>
-                    </ConfirmForm>
+                    {can.delete && (
+                      <ConfirmForm action={deleteAsset.bind(null, slug, a.id)} message={t.common.confirmDelete}>
+                        <button type="submit" className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-red-600" aria-label={t.common.delete}>
+                          <X className="size-4" />
+                        </button>
+                      </ConfirmForm>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -147,11 +149,13 @@ export default async function ClientPage({ params }: PageProps<"/app/[tenant]/cl
             </Card>
           )}
 
-          <ConfirmForm action={deleteClient.bind(null, slug, id)} message={t.common.confirmDelete}>
-            <Button type="submit" variant="danger" size="sm">
-              <Trash2 className="size-4" /> {t.common.delete}
-            </Button>
-          </ConfirmForm>
+          {can.delete && (
+            <ConfirmForm action={deleteClient.bind(null, slug, id)} message={t.common.confirmDelete}>
+              <Button type="submit" variant="danger" size="sm">
+                <Trash2 className="size-4" /> {t.common.delete}
+              </Button>
+            </ConfirmForm>
+          )}
         </div>
       </div>
     </>

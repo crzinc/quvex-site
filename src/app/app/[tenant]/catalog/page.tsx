@@ -12,7 +12,7 @@ const LOW_STOCK = 3;
 
 export default async function CatalogPage({ params, searchParams }: PageProps<"/app/[tenant]/catalog">) {
   const { tenant: slug } = await params;
-  const { supabase, tenant, t } = await requireTenant(slug);
+  const { supabase, tenant, t, can } = await requireTenant(slug);
   const inventory = hasModule(tenant.modules, "inventory");
   const kind = (await searchParams).tab === "part" && inventory ? "part" : "service";
   const base = `/app/${slug}/catalog`;
@@ -44,20 +44,22 @@ export default async function CatalogPage({ params, searchParams }: PageProps<"/
         />
       )}
 
-      <Card className="mb-6">
-        <details>
-          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium sm:px-5">
-            <Plus className="size-4 text-accent" />
-            {kind === "part" ? t.catalog.newPart : t.catalog.newService}
-          </summary>
-          <ActionForm action={saveCatalogItem.bind(null, slug, null)} className="grid gap-4 border-t border-border p-4 sm:p-5">
-            <CatalogItemFields t={t} kind={kind} />
-            <div>
-              <SubmitButton>{t.common.create}</SubmitButton>
-            </div>
-          </ActionForm>
-        </details>
-      </Card>
+      {can.managePrices && (
+        <Card className="mb-6">
+          <details>
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium sm:px-5">
+              <Plus className="size-4 text-accent" />
+              {kind === "part" ? t.catalog.newPart : t.catalog.newService}
+            </summary>
+            <ActionForm action={saveCatalogItem.bind(null, slug, null)} className="grid gap-4 border-t border-border p-4 sm:p-5">
+              <CatalogItemFields t={t} kind={kind} />
+              <div>
+                <SubmitButton>{t.common.create}</SubmitButton>
+              </div>
+            </ActionForm>
+          </details>
+        </Card>
+      )}
 
       {groups.size === 0 && (
         <Card>
@@ -72,23 +74,35 @@ export default async function CatalogPage({ params, searchParams }: PageProps<"/
             <ul className="divide-y divide-border">
               {list.map((item) => {
                 const low = item.kind === "part" && item.stock !== null && Number(item.stock) <= LOW_STOCK;
+                const summary = (
+                  <>
+                    <span className="min-w-0 flex-1">
+                      <span className={item.active ? "text-sm font-medium" : "text-sm font-medium text-fg-subtle line-through"}>{item.name}</span>
+                      {item.kind === "service" && item.duration_min ? (
+                        <span className="ml-2 text-xs text-fg-subtle">{item.duration_min}′</span>
+                      ) : null}
+                    </span>
+                    {item.kind === "part" && item.stock !== null && (
+                      <Badge tone={low ? "red" : "slate"} className="tabular-nums">
+                        {low && `${t.catalog.lowStock} · `}
+                        {Number(item.stock)}
+                      </Badge>
+                    )}
+                    <span className="w-20 text-right text-sm font-medium tabular-nums">{money(item.price)}</span>
+                  </>
+                );
+                if (!can.managePrices) {
+                  return (
+                    <li key={item.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                      {summary}
+                    </li>
+                  );
+                }
                 return (
                   <li key={item.id}>
                     <details className="group">
                       <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 hover:bg-surface-2/60 sm:px-5">
-                        <span className="min-w-0 flex-1">
-                          <span className={item.active ? "text-sm font-medium" : "text-sm font-medium text-fg-subtle line-through"}>{item.name}</span>
-                          {item.kind === "service" && item.duration_min ? (
-                            <span className="ml-2 text-xs text-fg-subtle">{item.duration_min}′</span>
-                          ) : null}
-                        </span>
-                        {item.kind === "part" && item.stock !== null && (
-                          <Badge tone={low ? "red" : "slate"} className="tabular-nums">
-                            {low && `${t.catalog.lowStock} · `}
-                            {Number(item.stock)}
-                          </Badge>
-                        )}
-                        <span className="w-20 text-right text-sm font-medium tabular-nums">{money(item.price)}</span>
+                        {summary}
                       </summary>
                       <div className="grid gap-4 border-t border-border bg-surface-2/40 p-4 sm:p-5">
                         {item.kind === "part" && (

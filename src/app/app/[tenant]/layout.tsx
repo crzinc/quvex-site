@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: LayoutProps<"/app/[tenant]">)
 
 export default async function TenantLayout({ children, params }: LayoutProps<"/app/[tenant]">) {
   const { tenant: slug } = await params;
-  const { supabase, tenant, niche, locale, t } = await requireTenant(slug);
+  const { supabase, tenant, niche, locale, t, can } = await requireTenant(slug);
   const profile = await getProfile();
   const base = `/app/${slug}`;
   const m = tenant.modules;
@@ -28,9 +28,9 @@ export default async function TenantLayout({ children, params }: LayoutProps<"/a
     { id: "clients", href: `${base}/clients`, label: t.nav.clients },
     ...(hasModule(m, "reminders") ? [{ id: "reminders", href: `${base}/reminders`, label: t.nav.reminders, badge: dueReminders ?? 0 } as NavItem] : []),
     { id: "catalog", href: `${base}/catalog`, label: hasModule(m, "inventory") ? t.nav.catalog : t.catalog.services },
-    ...(hasModule(m, "staff") ? [{ id: "staff", href: `${base}/staff`, label: term(niche, "staff", locale) } as NavItem] : []),
-    ...(hasModule(m, "finance") ? [{ id: "finance", href: `${base}/finance`, label: t.nav.finance } as NavItem] : []),
-    { id: "settings", href: `${base}/settings`, label: t.nav.settings },
+    ...(hasModule(m, "staff") && can.manageStaff ? [{ id: "staff", href: `${base}/staff`, label: term(niche, "staff", locale) } as NavItem] : []),
+    ...(hasModule(m, "finance") && can.viewFinance ? [{ id: "finance", href: `${base}/finance`, label: t.nav.finance } as NavItem] : []),
+    ...(can.settings ? [{ id: "settings", href: `${base}/settings`, label: t.nav.settings } as NavItem] : []),
     ...(profile?.is_platform_admin ? [{ id: "admin", href: "/admin", label: t.nav.admin } as NavItem] : []),
   ];
 

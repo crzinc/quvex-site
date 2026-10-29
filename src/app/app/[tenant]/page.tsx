@@ -7,7 +7,7 @@ import { bakuToday, daysAgo, money, startOfMonth } from "@/lib/utils";
 
 export default async function DashboardPage({ params }: PageProps<"/app/[tenant]">) {
   const { tenant: slug } = await params;
-  const { supabase, tenant, niche, locale, t } = await requireTenant(slug);
+  const { supabase, tenant, niche, locale, t, can } = await requireTenant(slug);
   const base = `/app/${slug}`;
   const open = openStatusIds(niche);
   const today = bakuToday();
@@ -57,16 +57,25 @@ export default async function DashboardPage({ params }: PageProps<"/app/[tenant]
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label={t.dashboard.inWork} value={active.count ?? 0} href={`${base}/orders`} />
-        <Stat label={t.dashboard.revenueToday} value={money(byDay.get(today) ?? 0)} />
-        <Stat label={t.dashboard.revenueMonth} value={money(monthRevenue)} href={hasModule(tenant.modules, "finance") ? `${base}/finance` : undefined} />
+        {can.viewFinance && (
+          <>
+            <Stat label={t.dashboard.revenueToday} value={money(byDay.get(today) ?? 0)} />
+            <Stat label={t.dashboard.revenueMonth} value={money(monthRevenue)} href={hasModule(tenant.modules, "finance") ? `${base}/finance` : undefined} />
+          </>
+        )}
         {hasModule(tenant.modules, "reminders") ? (
-          <Stat label={t.dashboard.remindersDue} value={reminders.count ?? 0} hint={`${t.dashboard.debts}: ${money(debtTotal)}`} href={`${base}/reminders`} />
+          <Stat
+            label={t.dashboard.remindersDue}
+            value={reminders.count ?? 0}
+            hint={can.viewFinance ? `${t.dashboard.debts}: ${money(debtTotal)}` : undefined}
+            href={`${base}/reminders`}
+          />
         ) : (
-          <Stat label={t.dashboard.debts} value={money(debtTotal)} />
+          can.viewFinance && <Stat label={t.dashboard.debts} value={money(debtTotal)} />
         )}
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
+      <div className={can.viewFinance ? "mt-6 grid gap-6 lg:grid-cols-[1fr_340px]" : "mt-6"}>
         <Card>
           <CardHeader
             title={t.dashboard.activeOrders}
@@ -83,24 +92,26 @@ export default async function DashboardPage({ params }: PageProps<"/app/[tenant]
           )}
         </Card>
 
-        <Card className="self-start">
-          <CardHeader title={t.dashboard.last14} />
-          <div className="flex h-40 items-end gap-1 px-4 pt-4 pb-2 sm:px-5">
-            {days.map((d) => (
-              <div key={d.key} className="group flex h-full flex-1 flex-col items-center justify-end gap-1" title={`${d.key}: ${money(d.value)}`}>
-                <div
-                  className={d.key === today ? "w-full rounded-sm bg-accent" : "w-full rounded-sm bg-stone-300 group-hover:bg-stone-400 dark:bg-stone-700"}
-                  style={{ height: `${Math.max(2, (d.value / max) * 100)}%` }}
-                />
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-1 px-4 pb-4 text-[10px] text-fg-subtle sm:px-5">
-            {days.map((d) => (
-              <span key={d.key} className="flex-1 text-center tabular-nums">{d.label}</span>
-            ))}
-          </div>
-        </Card>
+        {can.viewFinance && (
+          <Card className="self-start">
+            <CardHeader title={t.dashboard.last14} />
+            <div className="flex h-40 items-end gap-1 px-4 pt-4 pb-2 sm:px-5">
+              {days.map((d) => (
+                <div key={d.key} className="group flex h-full flex-1 flex-col items-center justify-end gap-1" title={`${d.key}: ${money(d.value)}`}>
+                  <div
+                    className={d.key === today ? "w-full rounded-sm bg-accent" : "w-full rounded-sm bg-stone-300 group-hover:bg-stone-400 dark:bg-stone-700"}
+                    style={{ height: `${Math.max(2, (d.value / max) * 100)}%` }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-1 px-4 pb-4 text-[10px] text-fg-subtle sm:px-5">
+              {days.map((d) => (
+                <span key={d.key} className="flex-1 text-center tabular-nums">{d.label}</span>
+              ))}
+            </div>
+          </Card>
+        )}
       </div>
     </>
   );

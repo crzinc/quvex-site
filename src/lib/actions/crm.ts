@@ -223,6 +223,15 @@ export async function updateOrderDetails(slug: string, id: string, _: ActionStat
   return error ? fail(t, error) : done();
 }
 
+export async function setOrderDiscount(slug: string, id: string, _: ActionState, formData: FormData): Promise<ActionState> {
+  const { supabase, t } = await ctx(slug);
+  const percent = z.coerce.number().min(0).max(100).safeParse(formData.get("discount_percent"));
+  if (!percent.success) return fail(t);
+  // Totals are recalculated by a DB trigger; only owner/manager may change it (also enforced in DB).
+  const { error } = await supabase.from("orders").update({ discount_percent: percent.data }).eq("id", id);
+  return error ? fail(t, error) : done();
+}
+
 export async function deleteOrder(slug: string, id: string) {
   const { supabase, base } = await ctx(slug);
   await supabase.from("orders").delete().eq("id", id);
@@ -369,6 +378,8 @@ export async function updateTenant(slug: string, _: ActionState, formData: FormD
   const parsed = tenantSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fail(t);
   const modules = niche.modules.filter((m) => formData.get(`module.${m}`) === "on");
-  const { error } = await supabase.from("tenants").update({ ...parsed.data, modules }).eq("id", tenant.id);
+  const printNote = String(formData.get("print_note") ?? "").trim().slice(0, 500);
+  const settings = { ...tenant.settings, print_note: printNote || undefined };
+  const { error } = await supabase.from("tenants").update({ ...parsed.data, modules, settings }).eq("id", tenant.id);
   return error ? fail(t, error) : done();
 }

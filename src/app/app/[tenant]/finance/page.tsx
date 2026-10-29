@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { X } from "lucide-react";
-import { requireTenant } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { Card, CardHeader, EmptyState, Field, Input, PageHeader, Select, Stat, Tabs } from "@/components/ui";
 import { ActionForm, ConfirmForm, SubmitButton } from "@/components/ui/forms";
 import { addPayment, deletePayment } from "@/lib/actions/crm";
@@ -12,7 +12,7 @@ const METHODS = ["cash", "card", "transfer"] as const;
 export default async function FinancePage({ params, searchParams }: PageProps<"/app/[tenant]/finance">) {
   const { tenant: slug } = await params;
   const period = (await searchParams).period === "last" ? "last" : "this";
-  const { supabase, tenant, locale, t } = await requireTenant(slug);
+  const { supabase, tenant, locale, t } = await requirePermission(slug, "viewFinance");
   const base = `/app/${slug}`;
   const from = startOfMonth(period === "last" ? -1 : 0);
   const to = startOfMonth(period === "last" ? 0 : 1);

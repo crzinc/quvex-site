@@ -4,7 +4,7 @@ import { MessageCircle, Phone, Printer, Trash2, X } from "lucide-react";
 import { requireTenant } from "@/lib/auth";
 import { getStatus, hasModule, term } from "@/niches";
 import { Badge, Button, Card, CardHeader, EmptyState, Field, Input, PageHeader, Select, Textarea, buttonClass } from "@/components/ui";
-import { ActionForm, ConfirmForm, PrintButton, SubmitButton } from "@/components/ui/forms";
+import { ActionForm, ConfirmForm, SubmitButton } from "@/components/ui/forms";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { AddItemForm } from "@/components/app/AddItemForm";
 import { ReminderForm } from "@/components/app/ReminderForm";
@@ -18,6 +18,7 @@ import {
   updateOrderDetails,
   updateOrderStatus,
   createReminder,
+  setOrderDiscount,
 } from "@/lib/actions/crm";
 import { fill } from "@/i18n/dictionaries";
 import { cn, formatDate, money, whatsappLink } from "@/lib/utils";
@@ -25,7 +26,7 @@ import type { Asset, CatalogItem, Client, Order, OrderItem, Payment, Reminder, S
 
 export default async function OrderPage({ params }: PageProps<"/app/[tenant]/orders/[id]">) {
   const { tenant: slug, id } = await params;
-  const { supabase, tenant, niche, locale, t } = await requireTenant(slug);
+  const { supabase, tenant, niche, locale, t, can } = await requireTenant(slug);
   const base = `/app/${slug}`;
 
   const { data: order } = await supabase
@@ -77,9 +78,9 @@ export default async function OrderPage({ params }: PageProps<"/app/[tenant]/ord
                 <MessageCircle className="size-4" /> {t.orders.sendWhatsapp}
               </a>
             )}
-            <PrintButton>
+            <a href={`/print/${slug}/orders/${id}`} target="_blank" rel="noreferrer" className={buttonClass("secondary")}>
               <Printer className="size-4" /> {t.orders.print}
-            </PrintButton>
+            </a>
           </div>
         }
       />
@@ -124,11 +125,13 @@ export default async function OrderPage({ params }: PageProps<"/app/[tenant]/ord
                       </div>
                     </div>
                     <div className="text-sm font-medium tabular-nums">{money(Number(it.qty) * Number(it.price))}</div>
-                    <form action={deleteOrderItem.bind(null, slug, it.id)} className="no-print">
-                      <button type="submit" className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-red-600" aria-label={t.common.delete}>
-                        <X className="size-4" />
-                      </button>
-                    </form>
+                    {can.delete && (
+                      <form action={deleteOrderItem.bind(null, slug, it.id)} className="no-print">
+                        <button type="submit" className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-red-600" aria-label={t.common.delete}>
+                          <X className="size-4" />
+                        </button>
+                      </form>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -145,9 +148,31 @@ export default async function OrderPage({ params }: PageProps<"/app/[tenant]/ord
                 labels={{ service: term(niche, "service", locale), part: term(niche, "part", locale), staff: term(niche, "staff", locale) }}
               />
             </div>
-            <div className="flex items-center justify-between border-t border-border px-4 py-4 sm:px-5">
-              <span className="text-sm text-fg-muted">{t.common.total}</span>
-              <span className="text-xl font-semibold tabular-nums">{money(order.total)}</span>
+            <div className="grid gap-1.5 border-t border-border px-4 py-4 text-sm sm:px-5">
+              {Number(order.discount_percent) > 0 && (
+                <>
+                  <div className="flex justify-between text-fg-muted">
+                    <span>{t.orders.subtotal}</span>
+                    <span className="tabular-nums">{money(order.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-fg-muted">
+                    <span>{t.orders.discount} {Number(order.discount_percent)}%</span>
+                    <span className="tabular-nums">−{money(Number(order.subtotal) - Number(order.total))}</span>
+                  </div>
+                </>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-fg-muted">{t.common.total}</span>
+                <span className="text-xl font-semibold tabular-nums">{money(order.total)}</span>
+              </div>
+              {can.discount && (
+                <ActionForm action={setOrderDiscount.bind(null, slug, id)} resetOnSuccess={false} className="no-print mt-2 flex items-end justify-end gap-2">
+                  <Field label={t.orders.discountPercent} className="w-28">
+                    <Input name="discount_percent" type="number" min="0" max="100" step="0.5" defaultValue={Number(order.discount_percent)} />
+                  </Field>
+                  <SubmitButton variant="secondary">{t.orders.apply}</SubmitButton>
+                </ActionForm>
+              )}
             </div>
           </Card>
 
@@ -169,11 +194,13 @@ export default async function OrderPage({ params }: PageProps<"/app/[tenant]/ord
                       {t.orders.methods[p.method]} <span className="text-fg-muted">· {formatDate(p.created_at, locale, true)}</span>
                     </span>
                     <span className="font-medium tabular-nums">{money(p.amount)}</span>
-                    <ConfirmForm action={deletePayment.bind(null, slug, p.id)} message={t.common.confirmDelete} className="no-print">
-                      <button type="submit" className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-red-600" aria-label={t.common.delete}>
-                        <X className="size-4" />
-                      </button>
-                    </ConfirmForm>
+                    {can.delete && (
+                      <ConfirmForm action={deletePayment.bind(null, slug, p.id)} message={t.common.confirmDelete} className="no-print">
+                        <button type="submit" className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-red-600" aria-label={t.common.delete}>
+                          <X className="size-4" />
+                        </button>
+                      </ConfirmForm>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -294,11 +321,13 @@ export default async function OrderPage({ params }: PageProps<"/app/[tenant]/ord
             </Card>
           )}
 
-          <ConfirmForm action={deleteOrder.bind(null, slug, id)} message={t.common.confirmDelete} className="no-print">
-            <Button type="submit" variant="danger" size="sm">
-              <Trash2 className="size-4" /> {t.orders.deleteOrder}
-            </Button>
-          </ConfirmForm>
+          {can.delete && (
+            <ConfirmForm action={deleteOrder.bind(null, slug, id)} message={t.common.confirmDelete} className="no-print">
+              <Button type="submit" variant="danger" size="sm">
+                <Trash2 className="size-4" /> {t.orders.deleteOrder}
+              </Button>
+            </ConfirmForm>
+          )}
         </div>
       </div>
     </>

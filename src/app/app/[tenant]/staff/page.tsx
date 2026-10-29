@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { requireTenant } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { term } from "@/niches";
 import { Badge, Card, EmptyState, Field, Input, PageHeader } from "@/components/ui";
 import { ActionForm, SubmitButton } from "@/components/ui/forms";
@@ -29,14 +29,14 @@ function StaffFields({ t, staff }: { t: Dictionary; staff?: Staff }) {
 
 export default async function StaffPage({ params }: PageProps<"/app/[tenant]/staff">) {
   const { tenant: slug } = await params;
-  const { supabase, tenant, niche, locale, t } = await requireTenant(slug);
+  const { supabase, tenant, niche, locale, t } = await requirePermission(slug, "manageStaff");
   const doneIds = niche.statuses.filter((s) => s.kind === "done").map((s) => s.id);
 
   const [staff, closed] = await Promise.all([
     supabase.from("staff").select("*").eq("tenant_id", tenant.id).order("active", { ascending: false }).order("name").returns<Staff[]>(),
     supabase
       .from("orders")
-      .select("staff_id, order_items(kind, qty, price, staff_id)")
+      .select("staff_id, discount_percent, order_items(kind, qty, price, staff_id)")
       .eq("tenant_id", tenant.id)
       .in("status", doneIds)
       .gte("closed_at", startOfMonth().toISOString()),
@@ -45,11 +45,12 @@ export default async function StaffPage({ params }: PageProps<"/app/[tenant]/sta
   // Payroll: labour (service lines) attributed to the line's master, falling back to the order's master.
   const labour = new Map<string, { sum: number; count: number }>();
   for (const order of closed.data ?? []) {
+    const factor = 1 - Number(order.discount_percent ?? 0) / 100;
     for (const item of order.order_items ?? []) {
       const who = item.staff_id ?? order.staff_id;
       if (!who || item.kind !== "service") continue;
       const cur = labour.get(who) ?? { sum: 0, count: 0 };
-      labour.set(who, { sum: cur.sum + Number(item.qty) * Number(item.price), count: cur.count + 1 });
+      labour.set(who, { sum: cur.sum + Number(item.qty) * Number(item.price) * factor, count: cur.count + 1 });
     }
   }
 

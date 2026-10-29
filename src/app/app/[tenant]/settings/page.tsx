@@ -1,23 +1,36 @@
-import { requireTenant } from "@/lib/auth";
-import { Badge, Card, CardHeader, Field, Input, PageHeader } from "@/components/ui";
-import { ActionForm, SubmitButton } from "@/components/ui/forms";
+import { X } from "lucide-react";
+import { requirePermission } from "@/lib/auth";
+import { Badge, Card, CardHeader, Field, Input, PageHeader, Textarea } from "@/components/ui";
+import { ActionForm, AutoSubmitSelect, ConfirmForm, SubmitButton } from "@/components/ui/forms";
+import { InviteForm } from "@/components/app/InviteForm";
 import { updateTenant } from "@/lib/actions/crm";
+import { createInvitation, removeMember, revokeInvitation, setMemberRole } from "@/lib/actions/team";
 import { planPrice } from "@/config/plans";
-import { formatDate } from "@/lib/utils";
+import { daysAgo, formatDate } from "@/lib/utils";
+import type { Invitation, Role } from "@/lib/types";
+
+const ROLES: Role[] = ["owner", "manager", "staff"];
 
 export default async function SettingsPage({ params }: PageProps<"/app/[tenant]/settings">) {
   const { tenant: slug } = await params;
-  const { supabase, tenant, niche, locale, t } = await requireTenant(slug);
+  const { supabase, tenant, niche, locale, t, user } = await requirePermission(slug, "settings");
 
-  const { data: members } = await supabase
-    .from("memberships")
-    .select("role, profiles(full_name, email)")
-    .eq("tenant_id", tenant.id);
+  const [{ data: members }, { data: invites }] = await Promise.all([
+    supabase.from("memberships").select("user_id, role, profiles(full_name, email)").eq("tenant_id", tenant.id).order("created_at"),
+    supabase
+      .from("invitations")
+      .select("*")
+      .eq("tenant_id", tenant.id)
+      .is("accepted_at", null)
+      .gt("expires_at", daysAgo(0).toISOString())
+      .order("created_at", { ascending: false })
+      .returns<Invitation[]>(),
+  ]);
 
   return (
     <>
       <PageHeader title={t.settings.title} />
-      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
         <ActionForm action={updateTenant.bind(null, slug)} resetOnSuccess={false} successMessage={t.settings.saved} className="grid content-start gap-6">
           <Card>
             <CardHeader title={t.settings.business} />
@@ -33,6 +46,15 @@ export default async function SettingsPage({ params }: PageProps<"/app/[tenant]/
               </Field>
               <Field label={t.settings.address} className="sm:col-span-2">
                 <Input name="address" defaultValue={tenant.address ?? ""} />
+              </Field>
+              <Field label={t.settings.printNote} hint={t.settings.printNoteHint} className="sm:col-span-2">
+                <Textarea
+                  name="print_note"
+                  rows={2}
+                  maxLength={500}
+                  placeholder={t.settings.printNotePlaceholder}
+                  defaultValue={typeof tenant.settings?.print_note === "string" ? tenant.settings.print_note : ""}
+                />
               </Field>
             </div>
           </Card>
@@ -54,6 +76,66 @@ export default async function SettingsPage({ params }: PageProps<"/app/[tenant]/
         </ActionForm>
 
         <div className="grid content-start gap-6">
+          <Card>
+            <CardHeader title={t.settings.team} />
+            <ul className="divide-y divide-border">
+              {(members ?? []).map((m) => {
+                const p = m.profiles as unknown as { full_name: string | null; email: string | null } | null;
+                const isMe = m.user_id === user.id;
+                return (
+                  <li key={m.user_id} className="flex items-center gap-3 px-4 py-3 text-sm sm:px-5">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">
+                        {p?.full_name ?? p?.email} {isMe && <span className="font-normal text-fg-subtle">({t.settings.you})</span>}
+                      </span>
+                      <span className="block truncate text-xs text-fg-muted">{p?.email}</span>
+                    </span>
+                    {isMe ? (
+                      <Badge>{t.settings.roles[m.role as Role]}</Badge>
+                    ) : (
+                      <>
+                        <form action={setMemberRole.bind(null, slug, m.user_id)}>
+                          <AutoSubmitSelect name="role" defaultValue={m.role} aria-label={t.settings.role}>
+                            {ROLES.map((r) => (
+                              <option key={r} value={r}>{t.settings.roles[r]}</option>
+                            ))}
+                          </AutoSubmitSelect>
+                        </form>
+                        <ConfirmForm action={removeMember.bind(null, slug, m.user_id)} message={t.common.confirmDelete}>
+                          <button type="submit" className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-red-600" aria-label={t.settings.remove}>
+                            <X className="size-4" />
+                          </button>
+                        </ConfirmForm>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="border-t border-border p-4 sm:p-5">
+              <h3 className="mb-2 text-sm font-semibold">{t.settings.invite}</h3>
+              <InviteForm action={createInvitation.bind(null, slug)} t={t} businessName={tenant.name} />
+            </div>
+            {!!invites?.length && (
+              <div className="border-t border-border px-4 py-3 sm:px-5">
+                <h3 className="mb-2 text-xs font-medium text-fg-muted">{t.settings.pendingInvites}</h3>
+                <ul className="grid gap-2">
+                  {invites.map((i) => (
+                    <li key={i.id} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="min-w-0 truncate">
+                        {i.name ?? "—"} · {t.settings.roles[i.role]}
+                        <span className="text-xs text-fg-subtle"> · {t.settings.expires} {formatDate(i.expires_at, locale)}</span>
+                      </span>
+                      <form action={revokeInvitation.bind(null, slug, i.id)}>
+                        <button type="submit" className="text-xs text-fg-muted hover:text-red-600">{t.settings.revoke}</button>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </Card>
+
           <Card className="p-4 sm:p-5">
             <dl className="grid gap-4 text-sm">
               <div>
@@ -73,23 +155,6 @@ export default async function SettingsPage({ params }: PageProps<"/app/[tenant]/
                 </dd>
               </div>
             </dl>
-          </Card>
-          <Card>
-            <CardHeader title={t.settings.team} />
-            <ul className="divide-y divide-border">
-              {(members ?? []).map((m, i) => {
-                const p = m.profiles as unknown as { full_name: string | null; email: string | null } | null;
-                return (
-                  <li key={i} className="flex items-center justify-between gap-3 px-4 py-3 text-sm sm:px-5">
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium">{p?.full_name ?? p?.email}</span>
-                      <span className="block truncate text-xs text-fg-muted">{p?.email}</span>
-                    </span>
-                    <Badge>{t.settings.roles[m.role as keyof typeof t.settings.roles]}</Badge>
-                  </li>
-                );
-              })}
-            </ul>
           </Card>
         </div>
       </div>

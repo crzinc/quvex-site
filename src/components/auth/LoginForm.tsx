@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { login } from "@/lib/actions/auth";
 import { Field, Input } from "@/components/ui";
 import { SubmitButton } from "@/components/ui/forms";
@@ -14,7 +15,14 @@ export function LoginForm({ t, next }: { t: Dictionary; next: string }) {
       <Field label={t.common.email}>
         <Input name="email" type="email" required autoComplete="email" autoFocus />
       </Field>
-      <Field label={t.common.password}>
+      <Field
+        label={
+          <span className="flex items-center justify-between">
+            {t.common.password}
+            <Link href="/forgot-password" className="text-xs font-normal text-fg-muted hover:text-fg">{t.auth.forgotPassword}</Link>
+          </span>
+        }
+      >
         <Input name="password" type="password" required autoComplete="current-password" />
       </Field>
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}

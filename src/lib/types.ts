@@ -15,6 +15,8 @@ export interface Tenant {
   created_at: string;
 }
 
+export type Role = "owner" | "manager" | "staff";
+
 export interface Profile {
   id: string;
   email: string | null;
@@ -78,6 +80,8 @@ export interface Order {
   scheduled_at: string | null;
   notes: string | null;
   attributes: Record<string, string>;
+  subtotal: number;
+  discount_percent: number;
   total: number;
   paid: number;
   closed_at: string | null;
@@ -128,8 +132,20 @@ export interface Lead {
   created_at: string;
 }
 
+export interface Invitation {
+  id: string;
+  token: string;
+  role: "manager" | "staff";
+  name: string | null;
+  accepted_at: string | null;
+  expires_at: string;
+  created_at: string;
+}
+
 /** Shape returned by actions used with useActionState. */
 export interface ActionState {
   ok?: boolean;
   error?: string;
+  /** Optional payload for the form, e.g. a generated invite link. */
+  data?: Record<string, string>;
 }

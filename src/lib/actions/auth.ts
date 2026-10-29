@@ -51,7 +51,7 @@ export async function register(_: ActionState, formData: FormData): Promise<Acti
       // Business details travel with the user, so the tenant can be provisioned
       // right now or after e-mail confirmation (see /app).
       data: { full_name: input.full_name, phone: input.phone, locale, pending_business: business },
-      emailRedirectTo: `${(await headers()).get("origin") ?? siteUrl()}/auth/callback?next=/app`,
+      emailRedirectTo: `${await origin()}/auth/callback?next=/app`,
     },
   });
   if (error) return { error: error.message };
@@ -63,10 +63,11 @@ export async function register(_: ActionState, formData: FormData): Promise<Acti
   redirect(`/app/${tenant.slug}`);
 }
 
-export async function logout() {
+export async function logout(formData?: FormData) {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  redirect("/login");
+  const next = formData?.get("next");
+  redirect(typeof next === "string" && next ? `/login?next=${encodeURIComponent(safeNext(next))}` : "/login");
 }
 
 const businessSchema = registerSchema.pick({ niche: true, business_name: true, city: true, phone: true });
@@ -83,4 +84,28 @@ export async function createBusiness(_: ActionState, formData: FormData): Promis
     locale,
   );
   redirect(`/app/${tenant.slug}`);
+}
+
+async function origin() {
+  return (await headers()).get("origin") ?? siteUrl();
+}
+
+export async function requestPasswordReset(_: ActionState, formData: FormData): Promise<ActionState> {
+  const { t } = await getI18n();
+  const email = z.email().safeParse(String(formData.get("email") ?? "").trim());
+  if (!email.success) return { error: t.common.error };
+  const supabase = await createClient();
+  // Same answer whether or not the account exists, so the form can't be used to probe e-mails.
+  await supabase.auth.resetPasswordForEmail(email.data, { redirectTo: `${await origin()}/auth/callback?next=/reset-password` });
+  return { ok: true };
+}
+
+export async function updatePassword(_: ActionState, formData: FormData): Promise<ActionState> {
+  const { t } = await getI18n();
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 8 || password.length > 72) return { error: t.auth.passwordHint };
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: t.auth.resetExpired };
+  redirect("/app");
 }
