@@ -5,6 +5,7 @@ import { NICHES } from "@/niches";
 import { PLANS } from "@/config/plans";
 import { ButtonLink, Badge } from "@/components/ui";
 import { Logo } from "@/components/Logo";
+import { QuvexMark } from "@/components/brand/QuvexMark";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { LeadForm } from "@/components/landing/LeadForm";
 import { cn } from "@/lib/utils";
@@ -186,10 +187,11 @@ export default async function LandingPage() {
 
       {/* Lead */}
       <section id="demo" className="mx-auto max-w-6xl scroll-mt-20 px-4 pb-20 sm:px-6">
-        <div className="rounded-2xl bg-primary p-6 text-primary-fg sm:p-10">
+        <div className="relative overflow-hidden rounded-2xl bg-primary p-6 text-primary-fg sm:p-10">
+          <QuvexMark className="pointer-events-none absolute -right-16 -bottom-24 hidden h-96 w-auto opacity-[0.07] lg:block" />
           <h2 className="text-2xl font-semibold tracking-tight">{l.leadTitle}</h2>
           <p className="mt-2 max-w-xl opacity-70">{l.leadSubtitle}</p>
-          <div className="mt-6 [&_input]:border-transparent [&_input]:bg-surface [&_input]:text-fg">
+          <div className="relative mt-6 [&_input]:border-transparent [&_input]:bg-surface [&_input]:text-fg">
             <LeadForm t={l} />
           </div>
         </div>
@@ -198,8 +200,8 @@ export default async function LandingPage() {
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 text-sm text-fg-muted sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex items-center gap-3">
-            <Logo />
-            <span>· {l.footer}</span>
+            <Logo size={24} />
+            <span className="hidden sm:inline">· {l.footer}</span>
           </div>
           <div className="flex items-center gap-4">
             <LocaleSwitcher locale={locale} className="sm:hidden" />

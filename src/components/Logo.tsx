@@ -1,11 +1,13 @@
 import Link from "next/link";
+import { QuvexMark, QuvexWordmark } from "@/components/brand/QuvexMark";
 import { cn } from "@/lib/utils";
 
-export function Logo({ href = "/", className }: { href?: string; className?: string }) {
+/** Brand lockup: monogram + wordmark. `size` is the mark height in px; the wordmark scales with it. */
+export function Logo({ href = "/", size = 28, className }: { href?: string; size?: number; className?: string }) {
   return (
-    <Link href={href} className={cn("inline-flex items-center gap-2 font-semibold tracking-tight", className)}>
-      <span className="grid size-7 place-items-center rounded-lg bg-primary text-sm font-bold text-primary-fg">Q</span>
-      <span>Quvex</span>
+    <Link href={href} aria-label="Quvex" className={cn("inline-flex shrink-0 items-center text-fg", className)} style={{ gap: size * 0.32 }}>
+      <QuvexMark style={{ height: size, width: "auto" }} />
+      <QuvexWordmark style={{ height: size * 0.4, width: "auto", marginTop: size * 0.08 }} />
     </Link>
   );
 }
