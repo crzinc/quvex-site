@@ -28,7 +28,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           />
           <div className="ml-auto flex items-center gap-3 text-sm text-fg-muted">
             <span className="hidden sm:inline">{profile.email}</span>
-            <Link href="/app" className="hover:text-fg">CRM →</Link>
+            <Link href="/app?all=1" className="hover:text-fg">CRM →</Link>
             <LocaleSwitcher locale={locale} />
           </div>
         </div>

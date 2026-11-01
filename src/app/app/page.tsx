@@ -9,8 +9,14 @@ import { getNiche } from "@/niches";
 import { Logo } from "@/components/Logo";
 import { ButtonLink } from "@/components/ui";
 
-/** Entry point after login: finishes pending sign-up provisioning and routes to the right business. */
-export default async function AppIndex() {
+type TenantLink = { slug: string; name: string; niche: string };
+
+/**
+ * Entry point after login: finishes pending sign-up provisioning and routes to the right business.
+ * `?all=1` (the admin header's "CRM" link) lets a platform admin pick any business.
+ */
+export default async function AppIndex({ searchParams }: PageProps<"/app">) {
+  const browseAll = (await searchParams).all === "1";
   const user = await getUser();
   if (!user) redirect("/login");
   const [supabase, { locale, t }] = await Promise.all([createClient(), getI18n()]);
@@ -19,9 +25,14 @@ export default async function AppIndex() {
     .from("memberships")
     .select("role, tenants(slug, name, niche)")
     .eq("user_id", user.id);
-  const tenants = (memberships ?? []).flatMap((m) => (m.tenants ? [m.tenants as unknown as { slug: string; name: string; niche: string }] : []));
+  let tenants = (memberships ?? []).flatMap((m) => (m.tenants ? [m.tenants as unknown as TenantLink] : []));
 
-  if (tenants.length === 0) {
+  const profile = tenants.length === 0 || browseAll ? await getProfile() : null;
+  if (browseAll && profile?.is_platform_admin) {
+    // RLS lets platform admins read every tenant.
+    const { data } = await supabase.from("tenants").select("slug, name, niche").order("name").limit(500).returns<TenantLink[]>();
+    tenants = data ?? [];
+  } else if (tenants.length === 0) {
     // Fresh user from Auth (not the JWT): the metadata must reflect an already-finished provisioning.
     const { data: fresh } = await supabase.auth.getUser();
     const pending = fresh.user?.user_metadata?.pending_business as NewBusiness | null | undefined;
@@ -30,10 +41,8 @@ export default async function AppIndex() {
       await supabase.auth.updateUser({ data: { pending_business: null } });
       redirect(`/app/${tenant.slug}`);
     }
-    const profile = await getProfile();
     redirect(profile?.is_platform_admin ? "/admin" : "/app/new");
-  }
-  if (tenants.length === 1) redirect(`/app/${tenants[0].slug}`);
+  } else if (tenants.length === 1) redirect(`/app/${tenants[0].slug}`);
 
   return (
     <div className="mx-auto max-w-md px-4 py-16">

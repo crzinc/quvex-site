@@ -82,7 +82,7 @@ export function Sidebar({
       {/* Desktop */}
       <aside className="no-print sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface lg:flex">
         <div className="border-b border-border px-4 py-4">
-          <Link href="/app" className="flex items-center gap-2.5">
+          <Link href="/app?all=1" className="flex items-center gap-2.5">
             <span className="grid size-8 place-items-center rounded-lg bg-primary text-sm font-bold text-primary-fg">
               {tenantName.slice(0, 1).toUpperCase()}
             </span>
@@ -105,7 +105,7 @@ export function Sidebar({
 
       {/* Mobile */}
       <header className="no-print sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface/90 px-4 backdrop-blur lg:hidden">
-        <Link href="/app" className="truncate text-sm font-semibold">{tenantName}</Link>
+        <Link href="/app?all=1" className="truncate text-sm font-semibold">{tenantName}</Link>
         {footer}
       </header>
       <nav className="no-print fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
