@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { ADMIN_TENANT_SELECT, owner, tenantState, type AdminTenant } from "@/lib/admin";
 import { getNiche } from "@/niches";
 import { PLANS, type PlanId } from "@/config/plans";
-import { Badge, Button, ButtonLink, Card, CardHeader, EmptyState, Field, Input, PageHeader, Select, Stat } from "@/components/ui";
+import { Badge, ButtonLink, Card, CardHeader, EmptyState, Field, Input, PageHeader, Select, Stat } from "@/components/ui";
 import { ActionForm, SubmitButton } from "@/components/ui/forms";
 import { TenantStateBadge } from "@/components/admin/TenantStateBadge";
 import { recordBilling, setSubscription, setTenantStatus } from "@/lib/actions/admin";
@@ -15,15 +15,14 @@ export default async function AdminTenantPage({ params }: PageProps<"/admin/tena
   const { id } = await params;
   const { supabase, locale, t } = await requireAdmin();
 
-  const { data: tenant } = await supabase.from("tenants").select(ADMIN_TENANT_SELECT).eq("id", id).maybeSingle<AdminTenant>();
-  if (!tenant) notFound();
-
   const monthAgo = daysAgo(30).toISOString();
-  const [billing, orders30, lastOrder] = await Promise.all([
+  const [{ data: tenant }, billing, orders30, lastOrder] = await Promise.all([
+    supabase.from("tenants").select(ADMIN_TENANT_SELECT).eq("id", id).maybeSingle<AdminTenant>(),
     supabase.from("billing_payments").select("*").eq("tenant_id", id).order("created_at", { ascending: false }),
     supabase.from("orders").select("id", { count: "exact", head: true }).eq("tenant_id", id).gte("created_at", monthAgo),
     supabase.from("orders").select("created_at").eq("tenant_id", id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
+  if (!tenant) notFound();
   const o = owner(tenant);
   const members = tenant.memberships.length;
   const overLimit = tenant.user_limit !== null && members > tenant.user_limit;
@@ -41,9 +40,9 @@ export default async function AdminTenantPage({ params }: PageProps<"/admin/tena
               <ExternalLink className="size-4" /> {t.admin.openCrm}
             </ButtonLink>
             <form action={setTenantStatus.bind(null, id, tenant.status === "active" ? "suspended" : "active")}>
-              <Button type="submit" variant={tenant.status === "active" ? "danger" : "primary"}>
+              <SubmitButton variant={tenant.status === "active" ? "danger" : "primary"}>
                 {tenant.status === "active" ? t.admin.suspend : t.admin.activate}
-              </Button>
+              </SubmitButton>
             </form>
           </>
         }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { X } from "lucide-react";
 import { requirePermission } from "@/lib/auth";
 import { Card, CardHeader, EmptyState, Field, Input, PageHeader, Select, Stat, Tabs } from "@/components/ui";
-import { ActionForm, ConfirmForm, SubmitButton } from "@/components/ui/forms";
+import { ActionForm, ConfirmForm, PendingButton, SubmitButton } from "@/components/ui/forms";
 import { addPayment, deletePayment } from "@/lib/actions/crm";
 import { cn, formatDate, money, startOfMonth } from "@/lib/utils";
 import type { Payment } from "@/lib/types";
@@ -117,9 +117,9 @@ export default async function FinancePage({ params, searchParams }: PageProps<"/
                   </span>
                   {!p.order_id && (
                     <ConfirmForm action={deletePayment.bind(null, slug, p.id)} message={t.common.confirmDelete}>
-                      <button type="submit" className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-red-600" aria-label={t.common.delete}>
+                      <PendingButton icon className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-red-600" aria-label={t.common.delete}>
                         <X className="size-4" />
-                      </button>
+                      </PendingButton>
                     </ConfirmForm>
                   )}
                 </li>

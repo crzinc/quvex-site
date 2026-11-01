@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import { requirePermission } from "@/lib/auth";
 import { Badge, Card, CardHeader, Field, Input, PageHeader, Textarea } from "@/components/ui";
-import { ActionForm, AutoSubmitSelect, ConfirmForm, SubmitButton } from "@/components/ui/forms";
+import { ActionForm, AutoSubmitSelect, ConfirmForm, PendingButton, SubmitButton } from "@/components/ui/forms";
 import { InviteForm } from "@/components/app/InviteForm";
 import { updateTenant } from "@/lib/actions/crm";
 import { createInvitation, removeMember, revokeInvitation, setMemberRole, setMemberStaff } from "@/lib/actions/team";
@@ -128,9 +128,9 @@ export default async function SettingsPage({ params }: PageProps<"/app/[tenant]/
                           </AutoSubmitSelect>
                         </form>
                         <ConfirmForm action={removeMember.bind(null, slug, m.user_id)} message={t.common.confirmDelete}>
-                          <button type="submit" className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-red-600" aria-label={t.settings.remove}>
+                          <PendingButton icon className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-red-600" aria-label={t.settings.remove}>
                             <X className="size-4" />
-                          </button>
+                          </PendingButton>
                         </ConfirmForm>
                       </>
                     )}
@@ -159,7 +159,7 @@ export default async function SettingsPage({ params }: PageProps<"/app/[tenant]/
                         <span className="text-xs text-fg-subtle"> · {t.settings.expires} {formatDate(i.expires_at, locale)}</span>
                       </span>
                       <form action={revokeInvitation.bind(null, slug, i.id)}>
-                        <button type="submit" className="text-xs text-fg-muted hover:text-red-600">{t.settings.revoke}</button>
+                        <PendingButton className="text-xs text-fg-muted hover:text-red-600">{t.settings.revoke}</PendingButton>
                       </form>
                     </li>
                   ))}

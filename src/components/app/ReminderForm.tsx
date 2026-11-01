@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { ActionForm, SubmitButton } from "@/components/ui/forms";
 import { Field, Input, Select } from "@/components/ui";
+import { addMonths, bakuToday } from "@/lib/utils";
 import type { ActionState } from "@/lib/types";
 import type { Dictionary } from "@/i18n/dictionaries";
 
-function addMonths(months: number) {
-  const d = new Date();
-  d.setMonth(d.getMonth() + months);
-  return d.toISOString().slice(0, 10);
+/** Due date `months` from today (Baku calendar), as YYYY-MM-DD. */
+function dueIn(months: number) {
+  return addMonths(new Date(`${bakuToday()}T00:00:00Z`), months).toISOString().slice(0, 10);
 }
 
 /** Reminder form with niche presets ("oil change in 6 months") that prefill title and date. */
@@ -27,7 +27,7 @@ export function ReminderForm({
   clients?: { id: string; name: string }[];
 }) {
   const [title, setTitle] = useState(presets[0]?.title ?? "");
-  const [due, setDue] = useState(addMonths(presets[0]?.months ?? 1));
+  const [due, setDue] = useState(() => dueIn(presets[0]?.months ?? 1));
 
   return (
     <ActionForm action={action} resetOnSuccess={false} className="grid gap-3">
@@ -52,7 +52,7 @@ export function ReminderForm({
               type="button"
               onClick={() => {
                 setTitle(p.title);
-                setDue(addMonths(p.months));
+                setDue(dueIn(p.months));
               }}
               className="rounded-md border border-border px-2 py-1 text-xs text-fg-muted hover:border-border-strong hover:text-fg"
             >

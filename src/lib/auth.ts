@@ -6,12 +6,18 @@ import { getI18n } from "@/i18n/server";
 import { getNiche } from "@/niches";
 import type { Profile, Role, Tenant } from "@/lib/types";
 
-export const getUser = cache(async () => {
+export interface AuthUser {
+  id: string;
+  email: string | null;
+}
+
+/** The signed-in user from the verified JWT: no round trip to Supabase Auth (the proxy already refreshed the session). */
+export const getUser = cache(async (): Promise<AuthUser | null> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub) return null;
+  return { id: claims.sub, email: claims.email ?? null };
 });
 
 export const getProfile = cache(async (): Promise<Profile | null> => {
@@ -28,23 +34,25 @@ export const requireTenant = cache(async (slug: string) => {
   if (!user) redirect(`/login?next=/app/${slug}`);
 
   const supabase = await createClient();
-  const { data: tenant } = await supabase.from("tenants").select("*").eq("slug", slug).maybeSingle<Tenant>();
-  if (!tenant) notFound();
+  // Tenant + the user's own membership in one request, the profile in parallel.
+  const [{ data: row }, profile, { locale, t }] = await Promise.all([
+    supabase
+      .from("tenants")
+      .select("*, memberships(role, staff_id)")
+      .eq("slug", slug)
+      .eq("memberships.user_id", user.id)
+      .maybeSingle<Tenant & { memberships: { role: Role; staff_id: string | null }[] }>(),
+    getProfile(),
+    getI18n(),
+  ]);
+  if (!row) notFound();
+  const { memberships, ...tenant } = row;
+  const membership = memberships[0];
 
   // Platform admins act as owners of any tenant (RLS mirrors this via has_role()).
-  const [{ data: membership }, profile] = await Promise.all([
-    supabase
-      .from("memberships")
-      .select("role, staff_id")
-      .eq("tenant_id", tenant.id)
-      .eq("user_id", user.id)
-      .maybeSingle<{ role: Role; staff_id: string | null }>(),
-    getProfile(),
-  ]);
   const role: Role = membership?.role ?? (profile?.is_platform_admin ? "owner" : "staff");
   const niche = getNiche(tenant.niche);
 
-  const { locale, t } = await getI18n();
   return {
     supabase,
     user,
@@ -87,8 +95,7 @@ export async function requireAdmin() {
   const profile = await getProfile();
   if (!profile) redirect("/login?next=/admin");
   if (!profile.is_platform_admin) redirect("/app");
-  const supabase = await createClient();
-  const { locale, t } = await getI18n();
+  const [supabase, { locale, t }] = await Promise.all([createClient(), getI18n()]);
   return { supabase, profile, locale, t };
 }
 

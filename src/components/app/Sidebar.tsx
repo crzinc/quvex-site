@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, ClipboardList, LayoutGrid, Package, Settings, Shield, Users, UserCog, Wallet, LogOut, MoreHorizontal } from "lucide-react";
-import { useState } from "react";
+import { Suspense, use, useState } from "react";
 import { cn } from "@/lib/utils";
 import { logout } from "@/lib/actions/auth";
+import { PendingButton } from "@/components/ui/forms";
 
 const icons = { dashboard: LayoutGrid, orders: ClipboardList, clients: Users, catalog: Package, staff: UserCog, finance: Wallet, reminders: Bell, settings: Settings, admin: Shield };
 
@@ -13,7 +14,12 @@ export interface NavItem {
   id: keyof typeof icons;
   href: string;
   label: string;
-  badge?: number;
+  badge?: Promise<number>;
+}
+
+function Badge({ count }: { count: Promise<number> }) {
+  const n = use(count);
+  return n ? <span className="ml-auto rounded-md bg-accent-soft px-1.5 text-xs text-accent tabular-nums">{n}</span> : null;
 }
 
 function isActive(pathname: string, href: string, exact: boolean) {
@@ -62,8 +68,10 @@ export function Sidebar({
       >
         <Icon className={cn(compact ? "size-5" : "size-4", active && "text-accent")} strokeWidth={1.75} />
         <span className={cn(compact && "max-w-16 truncate")}>{item.label}</span>
-        {!compact && !!item.badge && (
-          <span className="ml-auto rounded-md bg-accent-soft px-1.5 text-xs text-accent tabular-nums">{item.badge}</span>
+        {!compact && item.badge && (
+          <Suspense>
+            <Badge count={item.badge} />
+          </Suspense>
         )}
       </Link>
     );
@@ -88,9 +96,9 @@ export function Sidebar({
         <div className="flex items-center justify-between gap-2 border-t border-border p-3">
           {footer}
           <form action={logout}>
-            <button type="submit" className="rounded-lg p-2 text-fg-muted hover:bg-surface-2 hover:text-fg" title={logoutLabel}>
+            <PendingButton icon className="rounded-lg p-2 text-fg-muted hover:bg-surface-2 hover:text-fg" title={logoutLabel}>
               <LogOut className="size-4" />
-            </button>
+            </PendingButton>
           </form>
         </div>
       </aside>
@@ -121,9 +129,9 @@ export function Sidebar({
           >
             {secondary.map((i) => link(i))}
             <form action={logout}>
-              <button type="submit" className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-fg-muted hover:bg-surface-2">
+              <PendingButton className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-fg-muted hover:bg-surface-2">
                 <LogOut className="size-4" /> {logoutLabel}
-              </button>
+              </PendingButton>
             </form>
           </div>
         </div>

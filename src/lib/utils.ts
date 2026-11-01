@@ -59,13 +59,38 @@ export function slugify(input: string): string {
     .slice(0, 32) || "biznes";
 }
 
-export function startOfMonth(offset = 0): Date {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth() + offset, 1);
-}
+/** Asia/Baku is UTC+4 all year (no DST since 2016). */
+const BAKU_OFFSET_MS = 4 * 3_600_000;
 
 export function bakuToday(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Baku" });
+}
+
+function bakuParts(): [number, number, number] {
+  const [y, m, d] = bakuToday().split("-").map(Number);
+  return [y, m - 1, d];
+}
+
+/** Start of a Baku calendar month (offset in months from the current one), independent of the server's timezone. */
+export function startOfMonth(offset = 0): Date {
+  const [y, m] = bakuParts();
+  return new Date(Date.UTC(y, m + offset, 1) - BAKU_OFFSET_MS);
+}
+
+/** Start of a Baku calendar day (offset in days from today). */
+export function bakuDayStart(offsetDays = 0): Date {
+  const [y, m, d] = bakuParts();
+  return new Date(Date.UTC(y, m, d + offsetDays) - BAKU_OFFSET_MS);
+}
+
+/** Adds calendar months, clamping the day: 31 Jan + 1 month = 28/29 Feb, not 3 Mar. */
+export function addMonths(date: Date, months: number): Date {
+  const d = new Date(date);
+  const day = d.getUTCDate();
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + months);
+  d.setUTCDate(Math.min(day, new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate()));
+  return d;
 }
 
 export function daysAgo(days: number): Date {

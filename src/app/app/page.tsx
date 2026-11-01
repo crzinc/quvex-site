@@ -13,8 +13,7 @@ import { ButtonLink } from "@/components/ui";
 export default async function AppIndex() {
   const user = await getUser();
   if (!user) redirect("/login");
-  const supabase = await createClient();
-  const { locale, t } = await getI18n();
+  const [supabase, { locale, t }] = await Promise.all([createClient(), getI18n()]);
 
   const { data: memberships } = await supabase
     .from("memberships")
@@ -23,7 +22,9 @@ export default async function AppIndex() {
   const tenants = (memberships ?? []).flatMap((m) => (m.tenants ? [m.tenants as unknown as { slug: string; name: string; niche: string }] : []));
 
   if (tenants.length === 0) {
-    const pending = user.user_metadata?.pending_business as NewBusiness | null | undefined;
+    // Fresh user from Auth (not the JWT): the metadata must reflect an already-finished provisioning.
+    const { data: fresh } = await supabase.auth.getUser();
+    const pending = fresh.user?.user_metadata?.pending_business as NewBusiness | null | undefined;
     if (pending?.name) {
       const tenant = await provisionTenant(supabase, pending, locale);
       await supabase.auth.updateUser({ data: { pending_business: null } });

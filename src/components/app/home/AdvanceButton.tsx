@@ -1,7 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { updateOrderStatus } from "@/lib/actions/crm";
 import { nextStatus, type NicheConfig } from "@/niches";
-import { Button } from "@/components/ui";
+import { SubmitButton } from "@/components/ui/forms";
 import type { Locale } from "@/i18n/config";
 
 /** One-tap move to the next status (e.g. "In progress" → "Ready"). */
@@ -25,9 +25,9 @@ export function AdvanceButton({
   return (
     <form action={updateOrderStatus.bind(null, slug, orderId)}>
       <input type="hidden" name="status" value={next.id} />
-      <Button type="submit" variant="secondary" size={size} className="w-full">
+      <SubmitButton variant="secondary" size={size} className="w-full">
         <ArrowRight className="size-4" /> {next.label[locale]}
-      </Button>
+      </SubmitButton>
     </form>
   );
 }

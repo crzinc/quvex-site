@@ -14,21 +14,29 @@ export async function generateMetadata({ params }: LayoutProps<"/app/[tenant]">)
 
 export default async function TenantLayout({ children, params }: LayoutProps<"/app/[tenant]">) {
   const { tenant: slug } = await params;
-  const { supabase, tenant, niche, locale, t, can, workspace } = await requireTenant(slug);
-  const profile = await getProfile();
+  const [{ supabase, tenant, niche, locale, t, can, workspace }, profile] = await Promise.all([requireTenant(slug), getProfile()]);
   const base = `/app/${slug}`;
   const m = tenant.modules;
 
-  const { count: dueReminders } = hasModule(m, "reminders") && workspace.nav.includes("reminders")
-    ? await supabase.from("reminders").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).eq("status", "pending").lte("due_at", bakuToday())
-    : { count: 0 };
+  // Not awaited: the menu renders right away and the badge streams in when the count arrives.
+  const dueReminders =
+    hasModule(m, "reminders") && workspace.nav.includes("reminders")
+      ? Promise.resolve(
+          supabase
+            .from("reminders")
+            .select("id", { count: "exact", head: true })
+            .eq("tenant_id", tenant.id)
+            .eq("status", "pending")
+            .lte("due_at", bakuToday()),
+        ).then(({ count }) => count ?? 0)
+      : undefined;
 
   // Menu = the role's template from the niche, filtered by enabled modules and permissions.
   const available: Record<NavId, NavItem | null> = {
     dashboard: { id: "dashboard", href: base, label: workspace.homeLabel[locale] },
     orders: hasModule(m, "orders") ? { id: "orders", href: `${base}/orders`, label: term(niche, "orders", locale) } : null,
     clients: { id: "clients", href: `${base}/clients`, label: t.nav.clients },
-    reminders: hasModule(m, "reminders") ? { id: "reminders", href: `${base}/reminders`, label: t.nav.reminders, badge: dueReminders ?? 0 } : null,
+    reminders: hasModule(m, "reminders") ? { id: "reminders", href: `${base}/reminders`, label: t.nav.reminders, badge: dueReminders } : null,
     catalog: { id: "catalog", href: `${base}/catalog`, label: hasModule(m, "inventory") ? t.nav.catalog : t.catalog.services },
     staff: hasModule(m, "staff") && can.manageStaff ? { id: "staff", href: `${base}/staff`, label: term(niche, "staff", locale) } : null,
     finance: hasModule(m, "finance") && can.viewFinance ? { id: "finance", href: `${base}/finance`, label: t.nav.finance } : null,
@@ -62,7 +70,7 @@ export default async function TenantLayout({ children, params }: LayoutProps<"/a
         )}
         <main className="mx-auto w-full max-w-6xl px-4 pt-6 pb-28 sm:px-6 lg:px-8 lg:pt-8 lg:pb-12">
           {suspended ? (
-            <div className="rounded-xl border border-border bg-surface p-8 text-center text-sm text-fg-muted">{t.dashboard.trialExpired}</div>
+            <div className="rounded-xl border border-border bg-surface p-8 text-center text-sm text-fg-muted">{t.dashboard.suspended}</div>
           ) : (
             children
           )}

@@ -11,12 +11,12 @@ export default async function AdminOverview() {
   const { supabase, locale, t } = await requireAdmin();
   const weekAgo = daysAgo(7).toISOString();
 
-  const [tenants, leads, ordersWeek] = await Promise.all([
+  const [tenants, leads, ordersWeek, { count: newLeads }] = await Promise.all([
     loadTenants(supabase),
     supabase.from("leads").select("*").order("created_at", { ascending: false }).limit(6).returns<Lead[]>(),
     supabase.from("orders").select("id", { count: "exact", head: true }).gte("created_at", weekAgo),
+    supabase.from("leads").select("id", { count: "exact", head: true }).eq("status", "new"),
   ]);
-  const { count: newLeads } = await supabase.from("leads").select("id", { count: "exact", head: true }).eq("status", "new");
   const states = tenants.map(tenantState);
 
   return (

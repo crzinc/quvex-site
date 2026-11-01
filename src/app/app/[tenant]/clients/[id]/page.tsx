@@ -2,8 +2,8 @@ import { notFound } from "next/navigation";
 import { MessageCircle, Phone, Plus, Trash2, X } from "lucide-react";
 import { requireTenant } from "@/lib/auth";
 import { hasModule, term } from "@/niches";
-import { Button, ButtonLink, Card, CardHeader, EmptyState, PageHeader, Stat, buttonClass } from "@/components/ui";
-import { ActionForm, ConfirmForm, SubmitButton } from "@/components/ui/forms";
+import { ButtonLink, Card, CardHeader, EmptyState, PageHeader, Stat, buttonClass } from "@/components/ui";
+import { ActionForm, ConfirmForm, PendingButton, SubmitButton } from "@/components/ui/forms";
 import { ClientFields } from "@/components/app/ClientFields";
 import { AssetFields } from "@/components/app/AssetFields";
 import { OrderList, ORDER_LIST_SELECT, type OrderRow } from "@/components/app/OrderList";
@@ -17,14 +17,13 @@ export default async function ClientPage({ params }: PageProps<"/app/[tenant]/cl
   const { supabase, tenant, niche, locale, t, can } = await requireTenant(slug);
   const base = `/app/${slug}`;
 
-  const { data: client } = await supabase.from("clients").select("*").eq("tenant_id", tenant.id).eq("id", id).maybeSingle<Client>();
-  if (!client) notFound();
-
-  const [assets, orders, reminders] = await Promise.all([
-    supabase.from("assets").select("*").eq("client_id", id).order("created_at").returns<Asset[]>(),
-    supabase.from("orders").select(ORDER_LIST_SELECT).eq("client_id", id).order("created_at", { ascending: false }).limit(100),
-    supabase.from("reminders").select("*").eq("client_id", id).order("due_at", { ascending: false }).limit(20).returns<Reminder[]>(),
+  const [{ data: client }, assets, orders, reminders] = await Promise.all([
+    supabase.from("clients").select("*").eq("tenant_id", tenant.id).eq("id", id).maybeSingle<Client>(),
+    supabase.from("assets").select("*").eq("tenant_id", tenant.id).eq("client_id", id).order("created_at").returns<Asset[]>(),
+    supabase.from("orders").select(ORDER_LIST_SELECT).eq("tenant_id", tenant.id).eq("client_id", id).order("created_at", { ascending: false }).limit(100),
+    supabase.from("reminders").select("*").eq("tenant_id", tenant.id).eq("client_id", id).order("due_at", { ascending: false }).limit(20).returns<Reminder[]>(),
   ]);
+  if (!client) notFound();
 
   const orderRows = (orders.data ?? []) as unknown as OrderRow[];
   const valid = orderRows.filter((o) => o.status !== "cancelled");
@@ -83,9 +82,9 @@ export default async function ClientPage({ params }: PageProps<"/app/[tenant]/cl
                     </div>
                     {can.delete && (
                       <ConfirmForm action={deleteAsset.bind(null, slug, a.id)} message={t.common.confirmDelete}>
-                        <button type="submit" className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-red-600" aria-label={t.common.delete}>
+                        <PendingButton icon className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-red-600" aria-label={t.common.delete}>
                           <X className="size-4" />
-                        </button>
+                        </PendingButton>
                       </ConfirmForm>
                     )}
                   </li>
@@ -151,9 +150,9 @@ export default async function ClientPage({ params }: PageProps<"/app/[tenant]/cl
 
           {can.delete && (
             <ConfirmForm action={deleteClient.bind(null, slug, id)} message={t.common.confirmDelete}>
-              <Button type="submit" variant="danger" size="sm">
+              <SubmitButton variant="danger" size="sm">
                 <Trash2 className="size-4" /> {t.common.delete}
-              </Button>
+              </SubmitButton>
             </ConfirmForm>
           )}
         </div>

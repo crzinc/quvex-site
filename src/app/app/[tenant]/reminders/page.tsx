@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 import { requireTenant } from "@/lib/auth";
-import { Badge, Button, Card, EmptyState, PageHeader, Tabs, buttonClass } from "@/components/ui";
+import { Badge, Card, EmptyState, PageHeader, Tabs, buttonClass } from "@/components/ui";
+import { SubmitButton } from "@/components/ui/forms";
 import { ReminderForm } from "@/components/app/ReminderForm";
 import { createReminder, setReminderStatus } from "@/lib/actions/crm";
 import { fill } from "@/i18n/dictionaries";
@@ -86,16 +87,16 @@ export default async function RemindersPage({ params, searchParams }: PageProps<
                       )}
                       {r.status === "pending" && (
                         <form action={setReminderStatus.bind(null, slug, r.id, "sent")}>
-                          <Button type="submit" size="sm" variant="secondary">{t.reminders.markSent}</Button>
+                          <SubmitButton size="sm" variant="secondary">{t.reminders.markSent}</SubmitButton>
                         </form>
                       )}
                       {(r.status === "pending" || r.status === "sent") && (
                         <>
                           <form action={setReminderStatus.bind(null, slug, r.id, "done")}>
-                            <Button type="submit" size="sm" variant="secondary">{t.reminders.markDone}</Button>
+                            <SubmitButton size="sm" variant="secondary">{t.reminders.markDone}</SubmitButton>
                           </form>
                           <form action={setReminderStatus.bind(null, slug, r.id, "dismissed")}>
-                            <Button type="submit" size="sm" variant="ghost">{t.reminders.dismiss}</Button>
+                            <SubmitButton size="sm" variant="ghost">{t.reminders.dismiss}</SubmitButton>
                           </form>
                         </>
                       )}

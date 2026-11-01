@@ -5,7 +5,7 @@ import type { Staff } from "@/lib/types";
 import { hasModule, openStatusIds, term } from "@/niches";
 import { ButtonLink, Card, CardHeader, EmptyState, PageHeader, Stat } from "@/components/ui";
 import { OrderList, ORDER_LIST_SELECT, type OrderRow } from "@/components/app/OrderList";
-import { bakuToday, daysAgo, money, startOfMonth } from "@/lib/utils";
+import { bakuDayStart, bakuToday, money, startOfMonth } from "@/lib/utils";
 
 /** Owner home: how the business is doing — money, active orders, team load. */
 export async function OverviewHome({ ctx }: { ctx: TenantContext }) {
@@ -13,8 +13,7 @@ export async function OverviewHome({ ctx }: { ctx: TenantContext }) {
   const base = `/app/${tenant.slug}`;
   const open = openStatusIds(niche);
   const today = bakuToday();
-  const since14 = daysAgo(13);
-  since14.setHours(0, 0, 0, 0);
+  const since14 = bakuDayStart(-13);
   const monthStart = startOfMonth();
   const from = since14 < monthStart ? since14 : monthStart;
 
@@ -42,7 +41,7 @@ export async function OverviewHome({ ctx }: { ctx: TenantContext }) {
   const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(since14.getTime() + i * 86_400_000 + 12 * 3_600_000);
     const key = d.toLocaleDateString("en-CA", { timeZone: "Asia/Baku" });
-    return { key, label: d.getDate(), value: byDay.get(key) ?? 0 };
+    return { key, label: Number(key.slice(8)), value: byDay.get(key) ?? 0 };
   });
   const max = Math.max(1, ...days.map((d) => d.value));
   const debtTotal = (debts.data ?? []).reduce((s, o) => s + Number(o.debt), 0);

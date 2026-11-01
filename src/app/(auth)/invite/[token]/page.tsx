@@ -5,18 +5,17 @@ import { getI18n } from "@/i18n/server";
 import { fill } from "@/i18n/dictionaries";
 import { acceptInvitation } from "@/lib/actions/team";
 import { logout } from "@/lib/actions/auth";
-import { Badge, Button, ButtonLink } from "@/components/ui";
+import { Badge, ButtonLink } from "@/components/ui";
+import { PendingButton, SubmitButton } from "@/components/ui/forms";
 import { InviteRegisterForm } from "@/components/auth/InviteRegisterForm";
 import type { Role } from "@/lib/types";
 
 export default async function InvitePage({ params, searchParams }: PageProps<"/invite/[token]">) {
   const { token } = await params;
   const limitError = (await searchParams).error === "limit";
-  const { t } = await getI18n();
   const supabase = await createClient();
-  const { data } = await supabase.rpc("invitation_preview", { p_token: token });
+  const [{ t }, { data }, user] = await Promise.all([getI18n(), supabase.rpc("invitation_preview", { p_token: token }), getUser()]);
   const invite = (data as { tenant_name: string; role: Role; valid: boolean }[] | null)?.[0];
-  const user = await getUser();
 
   if (!invite?.valid) {
     return (
@@ -42,11 +41,11 @@ export default async function InvitePage({ params, searchParams }: PageProps<"/i
             <span className="text-fg-muted">{t.invite.signedInAs}:</span> {user.email}
           </div>
           <form action={acceptInvitation.bind(null, token)} className="mt-4">
-            <Button type="submit" size="lg" variant="accent" className="w-full">{t.invite.accept}</Button>
+            <SubmitButton size="lg" variant="accent" className="w-full">{t.invite.accept}</SubmitButton>
           </form>
           <form action={logout} className="mt-3">
             <input type="hidden" name="next" value={`/invite/${token}`} />
-            <button type="submit" className="text-sm text-fg-muted hover:text-fg">{t.invite.notYou}</button>
+            <PendingButton className="text-sm text-fg-muted hover:text-fg">{t.invite.notYou}</PendingButton>
           </form>
         </div>
       ) : (

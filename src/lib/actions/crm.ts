@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireTenant } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { getI18n } from "@/i18n/server";
 import { getStatus } from "@/niches";
+import { findAssetAndClientIds } from "@/lib/search";
 import type { ActionState } from "@/lib/types";
 
 /*
@@ -19,6 +22,15 @@ const money = num.min(0).max(10_000_000);
 async function ctx(slug: string) {
   const c = await requireTenant(slug);
   return { ...c, base: `/app/${slug}` };
+}
+
+/**
+ * For actions on an existing row by id: skips loading the tenant (one round trip less per click).
+ * RLS still limits the write to tenants the user belongs to, and role rules to what the role may do.
+ */
+async function db(slug: string) {
+  const [supabase, { t }] = await Promise.all([createClient(), getI18n()]);
+  return { supabase, t, base: `/app/${slug}` };
 }
 
 /** Refresh every CRM page (route pattern + "layout" covers all nested pages of all tenants). */
@@ -70,7 +82,7 @@ export async function addClient(slug: string, _: ActionState, formData: FormData
   const identifier = String(formData.get("identifier") ?? "").trim().toUpperCase();
   const attrs = readAttributes(formData);
   if (identifier || Object.keys(attrs).length) {
-    await supabase.from("assets").insert({
+    const { error: assetError } = await supabase.from("assets").insert({
       tenant_id: tenant.id,
       client_id: client.id,
       kind: niche.asset.kind,
@@ -78,13 +90,14 @@ export async function addClient(slug: string, _: ActionState, formData: FormData
       title: assetTitle(attrs, identifier || niche.terms.asset[locale]),
       attributes: attrs,
     });
+    if (assetError) console.error(assetError);
   }
   invalidate();
   redirect(`${base}/clients/${client.id}`);
 }
 
 export async function updateClient(slug: string, id: string, _: ActionState, formData: FormData): Promise<ActionState> {
-  const { supabase, t } = await ctx(slug);
+  const { supabase, t } = await db(slug);
   const parsed = clientSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fail(t);
   const { error } = await supabase.from("clients").update(parsed.data).eq("id", id);
@@ -92,10 +105,35 @@ export async function updateClient(slug: string, id: string, _: ActionState, for
 }
 
 export async function deleteClient(slug: string, id: string) {
-  const { supabase, base } = await ctx(slug);
+  const { supabase, base } = await db(slug);
   await supabase.from("clients").delete().eq("id", id);
   invalidate();
   redirect(`${base}/clients`);
+}
+
+export interface ClientPick {
+  id: string;
+  name: string;
+  phone: string | null;
+  assets: { id: string; title: string; identifier: string | null }[];
+}
+
+/** Live client search for the new-order form (name, phone or plate), with each client's assets. */
+export async function searchClients(slug: string, q: string): Promise<ClientPick[]> {
+  const term = q.trim().slice(0, 60);
+  if (term.length < 2) return [];
+  const { supabase, tenant } = await requireTenant(slug);
+  const { clientIds } = await findAssetAndClientIds(supabase, tenant.id, term);
+  if (!clientIds.length) return [];
+  const { data } = await supabase
+    .from("clients")
+    .select("id, name, phone, assets(id, title, identifier)")
+    .eq("tenant_id", tenant.id)
+    .in("id", clientIds.slice(0, 50))
+    .order("created_at", { ascending: false })
+    .limit(8)
+    .returns<ClientPick[]>();
+  return data ?? [];
 }
 
 /* ── Assets (vehicles, …) ────────────────────────────────── */
@@ -117,7 +155,7 @@ export async function createAsset(slug: string, clientId: string, _: ActionState
 }
 
 export async function deleteAsset(slug: string, id: string) {
-  const { supabase } = await ctx(slug);
+  const { supabase } = await db(slug);
   await supabase.from("assets").delete().eq("id", id);
   invalidate();
 }
@@ -174,7 +212,7 @@ export async function createOrder(slug: string, _: ActionState, formData: FormDa
       asset_id: assetId,
       staff_id: get("staff_id") || null,
       status: niche.statuses[0].id,
-      scheduled_at: scheduled ? new Date(`${scheduled}:00+04:00`).toISOString() : null,
+      scheduled_at: scheduled ? new Date(`${scheduled.slice(0, 16)}:00+04:00`).toISOString() : null,
       notes: get("notes") || null,
       attributes: orderAttrs,
     })
@@ -224,7 +262,7 @@ export async function updateOrderDetails(slug: string, id: string, _: ActionStat
 }
 
 export async function setOrderDiscount(slug: string, id: string, _: ActionState, formData: FormData): Promise<ActionState> {
-  const { supabase, t } = await ctx(slug);
+  const { supabase, t } = await db(slug);
   const percent = z.coerce.number().min(0).max(100).safeParse(formData.get("discount_percent"));
   if (!percent.success) return fail(t);
   // Totals are recalculated by a DB trigger; only owner/manager may change it (also enforced in DB).
@@ -233,7 +271,7 @@ export async function setOrderDiscount(slug: string, id: string, _: ActionState,
 }
 
 export async function deleteOrder(slug: string, id: string) {
-  const { supabase, base } = await ctx(slug);
+  const { supabase, base } = await db(slug);
   await supabase.from("orders").delete().eq("id", id);
   invalidate();
   redirect(`${base}/orders`);
@@ -257,7 +295,7 @@ export async function addOrderItem(slug: string, orderId: string, _: ActionState
 }
 
 export async function deleteOrderItem(slug: string, id: string) {
-  const { supabase } = await ctx(slug);
+  const { supabase } = await db(slug);
   await supabase.from("order_items").delete().eq("id", id);
   invalidate();
 }
@@ -281,7 +319,7 @@ export async function addPayment(slug: string, orderId: string | null, _: Action
 }
 
 export async function deletePayment(slug: string, id: string) {
-  const { supabase } = await ctx(slug);
+  const { supabase } = await db(slug);
   await supabase.from("payments").delete().eq("id", id);
   invalidate();
 }
@@ -311,16 +349,22 @@ export async function saveCatalogItem(slug: string, id: string | null, _: Action
 }
 
 export async function restockItem(slug: string, id: string, _: ActionState, formData: FormData): Promise<ActionState> {
-  const { supabase, t } = await ctx(slug);
+  const { supabase, t } = await db(slug);
   const qty = Number(formData.get("qty"));
   if (!Number.isFinite(qty) || qty <= 0) return fail(t);
-  const { data } = await supabase.from("catalog_items").select("stock").eq("id", id).single();
-  const { error } = await supabase.from("catalog_items").update({ stock: Number(data?.stock ?? 0) + qty }).eq("id", id);
-  return error ? fail(t, error) : done();
+  // Atomic increment in the DB: two parallel restocks can't overwrite each other. null = row not writable.
+  const { data, error } = await supabase.rpc("restock_catalog_item", { p_id: id, p_qty: qty });
+  if (error?.code === "PGRST202") {
+    // Migration 20261101000000 not applied yet: fall back to read-then-write.
+    const { data: item } = await supabase.from("catalog_items").select("stock").eq("id", id).single();
+    const { error: updateError } = await supabase.from("catalog_items").update({ stock: Number(item?.stock ?? 0) + qty }).eq("id", id);
+    return updateError ? fail(t, updateError) : done();
+  }
+  return error || data === null ? fail(t, error) : done();
 }
 
 export async function deleteCatalogItem(slug: string, id: string) {
-  const { supabase } = await ctx(slug);
+  const { supabase } = await db(slug);
   await supabase.from("catalog_items").delete().eq("id", id);
   invalidate();
 }
@@ -364,7 +408,7 @@ export async function createReminder(slug: string, _: ActionState, formData: For
 }
 
 export async function setReminderStatus(slug: string, id: string, status: "pending" | "sent" | "done" | "dismissed") {
-  const { supabase } = await ctx(slug);
+  const { supabase } = await db(slug);
   await supabase.from("reminders").update({ status }).eq("id", id);
   invalidate();
 }

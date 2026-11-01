@@ -158,6 +158,7 @@ export const az = {
     noActive: "Aktiv sifariş yoxdur",
     trialEnds: "Sınaq müddəti {date} tarixində bitir.",
     trialExpired: "Sınaq müddəti bitib. Davam etmək üçün bizimlə əlaqə saxlayın.",
+    suspended: "Hesab dayandırılıb. Davam etmək üçün bizimlə əlaqə saxlayın.",
     contactUs: "Əlaqə",
   },
   orders: {

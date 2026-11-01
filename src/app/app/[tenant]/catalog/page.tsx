@@ -2,7 +2,7 @@ import { Plus } from "lucide-react";
 import { requireTenant } from "@/lib/auth";
 import { hasModule } from "@/niches";
 import { Badge, Card, EmptyState, Input, PageHeader, Tabs } from "@/components/ui";
-import { ActionForm, ConfirmForm, SubmitButton } from "@/components/ui/forms";
+import { ActionForm, ConfirmForm, PendingButton, SubmitButton } from "@/components/ui/forms";
 import { CatalogItemFields } from "@/components/app/CatalogItemFields";
 import { deleteCatalogItem, restockItem, saveCatalogItem } from "@/lib/actions/crm";
 import { money } from "@/lib/utils";
@@ -123,7 +123,7 @@ export default async function CatalogPage({ params, searchParams }: PageProps<"/
                           </div>
                         </ActionForm>
                         <ConfirmForm action={deleteCatalogItem.bind(null, slug, item.id)} message={t.common.confirmDelete}>
-                          <button type="submit" className="text-sm text-red-600 hover:underline">{t.common.delete}</button>
+                          <PendingButton className="text-sm text-red-600 hover:underline">{t.common.delete}</PendingButton>
                         </ConfirmForm>
                       </div>
                     </details>

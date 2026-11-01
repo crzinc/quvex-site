@@ -15,15 +15,16 @@ export default async function PrintOrderPage({ params }: PageProps<"/print/[tena
   const { tenant: slug, id } = await params;
   const { supabase, tenant, niche, locale, t } = await requireTenant(slug);
 
-  const { data: order } = await supabase
-    .from("orders")
-    .select("*, clients(*), assets(*), staff(*)")
-    .eq("tenant_id", tenant.id)
-    .eq("id", id)
-    .maybeSingle<Order & { clients: Client | null; assets: Asset | null; staff: Staff | null }>();
+  const [{ data: order }, { data: items }] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("*, clients(*), assets(*), staff(*)")
+      .eq("tenant_id", tenant.id)
+      .eq("id", id)
+      .maybeSingle<Order & { clients: Client | null; assets: Asset | null; staff: Staff | null }>(),
+    supabase.from("order_items").select("*").eq("tenant_id", tenant.id).eq("order_id", id).order("created_at").returns<OrderItem[]>(),
+  ]);
   if (!order) notFound();
-
-  const { data: items } = await supabase.from("order_items").select("*").eq("order_id", id).order("created_at").returns<OrderItem[]>();
   const services = (items ?? []).filter((i) => i.kind === "service");
   const parts = (items ?? []).filter((i) => i.kind === "part");
   const asset = order.assets;

@@ -2,16 +2,25 @@ import { requireTenant } from "@/lib/auth";
 import { term } from "@/niches";
 import { PageHeader } from "@/components/ui";
 import { NewOrderForm } from "@/components/app/NewOrderForm";
-import { createOrder } from "@/lib/actions/crm";
+import { createOrder, searchClients, type ClientPick } from "@/lib/actions/crm";
 
 export default async function NewOrderPage({ params, searchParams }: PageProps<"/app/[tenant]/orders/new">) {
   const { tenant: slug } = await params;
   const { client } = await searchParams;
   const { supabase, tenant, niche, locale, t } = await requireTenant(slug);
 
-  const [clients, assets, staff] = await Promise.all([
-    supabase.from("clients").select("id, name, phone").eq("tenant_id", tenant.id).order("created_at", { ascending: false }).limit(2000),
-    supabase.from("assets").select("id, client_id, title, identifier").eq("tenant_id", tenant.id).limit(4000),
+  const initialId = typeof client === "string" && /^[0-9a-f-]{36}$/i.test(client) ? client : null;
+
+  // Only the pre-selected client (from the client card) is loaded; other clients are searched on demand.
+  const [initial, staff] = await Promise.all([
+    initialId
+      ? supabase
+          .from("clients")
+          .select("id, name, phone, assets(id, title, identifier)")
+          .eq("tenant_id", tenant.id)
+          .eq("id", initialId)
+          .maybeSingle<ClientPick>()
+      : null,
     supabase.from("staff").select("id, name").eq("tenant_id", tenant.id).eq("active", true).order("name"),
   ]);
 
@@ -20,12 +29,11 @@ export default async function NewOrderPage({ params, searchParams }: PageProps<"
       <PageHeader title={`${t.orders.newOrder} ${term(niche, "order", locale).toLowerCase()}`} back={{ href: `/app/${slug}/orders`, label: term(niche, "orders", locale) }} />
       <NewOrderForm
         action={createOrder.bind(null, slug)}
+        search={searchClients.bind(null, slug)}
         t={t}
         locale={locale}
-        clients={clients.data ?? []}
-        assets={assets.data ?? []}
         staff={staff.data ?? []}
-        initialClientId={typeof client === "string" ? client : undefined}
+        initialClient={initial?.data ?? undefined}
         assetLabel={term(niche, "asset", locale)}
         staffLabel={term(niche, "staff", locale)}
         assetConfig={{

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { planUserLimit } from "@/config/plans";
+import { addMonths } from "@/lib/utils";
 import type { ActionState } from "@/lib/types";
 
 /* Platform-admin mutations. RLS additionally restricts these tables to is_platform_admin(). */
@@ -56,8 +57,7 @@ export async function recordBilling(id: string, _: ActionState, formData: FormDa
   const { plan, months, amount, method, note } = parsed.data;
 
   const { data: tenant } = await supabase.from("tenants").select("paid_until").eq("id", id).single();
-  const start = new Date(Math.max(Date.now(), tenant?.paid_until ? new Date(tenant.paid_until).getTime() : 0));
-  start.setMonth(start.getMonth() + months);
+  const start = addMonths(new Date(Math.max(Date.now(), tenant?.paid_until ? new Date(tenant.paid_until).getTime() : 0)), months);
 
   const { error } = await supabase.from("billing_payments").insert({ tenant_id: id, plan, months, amount, method, note });
   if (error) return { error: error.message };

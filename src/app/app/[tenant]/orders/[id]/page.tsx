@@ -3,8 +3,8 @@ import Link from "next/link";
 import { MessageCircle, Phone, Printer, Trash2, X } from "lucide-react";
 import { requireTenant } from "@/lib/auth";
 import { getStatus, hasModule, term } from "@/niches";
-import { Badge, Button, Card, CardHeader, EmptyState, Field, Input, PageHeader, Select, Textarea, buttonClass } from "@/components/ui";
-import { ActionForm, ConfirmForm, SubmitButton } from "@/components/ui/forms";
+import { Badge, Card, CardHeader, EmptyState, Field, Input, PageHeader, Select, Textarea, buttonClass } from "@/components/ui";
+import { ActionForm, ConfirmForm, PendingButton, StatusPipeline, SubmitButton } from "@/components/ui/forms";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { AddItemForm } from "@/components/app/AddItemForm";
 import { ReminderForm } from "@/components/app/ReminderForm";
@@ -29,21 +29,21 @@ export default async function OrderPage({ params }: PageProps<"/app/[tenant]/ord
   const { supabase, tenant, niche, locale, t, can } = await requireTenant(slug);
   const base = `/app/${slug}`;
 
-  const { data: order } = await supabase
-    .from("orders")
-    .select("*, clients(*), assets(*)")
-    .eq("tenant_id", tenant.id)
-    .eq("id", id)
-    .maybeSingle<Order & { clients: Client | null; assets: Asset | null }>();
-  if (!order) notFound();
-
-  const [items, payments, catalog, staff, reminders] = await Promise.all([
-    supabase.from("order_items").select("*").eq("order_id", id).order("created_at").returns<OrderItem[]>(),
-    supabase.from("payments").select("*").eq("order_id", id).order("created_at").returns<Payment[]>(),
+  // Everything in one parallel round; child rows are scoped by tenant so a foreign id returns nothing.
+  const [{ data: order }, items, payments, catalog, staff, reminders] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("*, clients(*), assets(*)")
+      .eq("tenant_id", tenant.id)
+      .eq("id", id)
+      .maybeSingle<Order & { clients: Client | null; assets: Asset | null }>(),
+    supabase.from("order_items").select("*").eq("tenant_id", tenant.id).eq("order_id", id).order("created_at").returns<OrderItem[]>(),
+    supabase.from("payments").select("*").eq("tenant_id", tenant.id).eq("order_id", id).order("created_at").returns<Payment[]>(),
     supabase.from("catalog_items").select("*").eq("tenant_id", tenant.id).eq("active", true).order("name").returns<CatalogItem[]>(),
     supabase.from("staff").select("*").eq("tenant_id", tenant.id).eq("active", true).order("name").returns<Staff[]>(),
-    supabase.from("reminders").select("*").eq("order_id", id).order("due_at").returns<Reminder[]>(),
+    supabase.from("reminders").select("*").eq("tenant_id", tenant.id).eq("order_id", id).order("due_at").returns<Reminder[]>(),
   ]);
+  if (!order) notFound();
 
   const client = order.clients;
   const asset = order.assets;
@@ -89,22 +89,11 @@ export default async function OrderPage({ params }: PageProps<"/app/[tenant]/ord
         <div className="grid content-start gap-6">
           {/* Status pipeline */}
           <Card className="no-print overflow-x-auto p-2">
-            <div className="flex min-w-max gap-1">
-              {niche.statuses.map((s) => (
-                <form key={s.id} action={updateOrderStatus.bind(null, slug, id)}>
-                  <input type="hidden" name="status" value={s.id} />
-                  <button
-                    type="submit"
-                    className={cn(
-                      "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                      s.id === order.status ? "bg-primary text-primary-fg" : "text-fg-muted hover:bg-surface-2 hover:text-fg",
-                    )}
-                  >
-                    {s.label[locale]}
-                  </button>
-                </form>
-              ))}
-            </div>
+            <StatusPipeline
+              action={updateOrderStatus.bind(null, slug, id)}
+              current={order.status}
+              statuses={niche.statuses.map((s) => ({ id: s.id, label: s.label[locale] }))}
+            />
           </Card>
 
           {/* Items */}
@@ -127,9 +116,9 @@ export default async function OrderPage({ params }: PageProps<"/app/[tenant]/ord
                     <div className="text-sm font-medium tabular-nums">{money(Number(it.qty) * Number(it.price))}</div>
                     {can.delete && (
                       <form action={deleteOrderItem.bind(null, slug, it.id)} className="no-print">
-                        <button type="submit" className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-red-600" aria-label={t.common.delete}>
+                        <PendingButton icon className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-red-600" aria-label={t.common.delete}>
                           <X className="size-4" />
-                        </button>
+                        </PendingButton>
                       </form>
                     )}
                   </li>
@@ -196,9 +185,9 @@ export default async function OrderPage({ params }: PageProps<"/app/[tenant]/ord
                     <span className="font-medium tabular-nums">{money(p.amount)}</span>
                     {can.delete && (
                       <ConfirmForm action={deletePayment.bind(null, slug, p.id)} message={t.common.confirmDelete} className="no-print">
-                        <button type="submit" className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-red-600" aria-label={t.common.delete}>
+                        <PendingButton icon className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-red-600" aria-label={t.common.delete}>
                           <X className="size-4" />
-                        </button>
+                        </PendingButton>
                       </ConfirmForm>
                     )}
                   </li>
@@ -305,9 +294,9 @@ export default async function OrderPage({ params }: PageProps<"/app/[tenant]/ord
                   </span>
                   {r.status === "pending" && (
                     <form action={setReminderStatus.bind(null, slug, r.id, "dismissed")}>
-                      <button type="submit" className="text-fg-subtle hover:text-red-600" aria-label={t.reminders.dismiss}>
+                      <PendingButton icon className="text-fg-subtle hover:text-red-600" aria-label={t.reminders.dismiss}>
                         <X className="size-4" />
-                      </button>
+                      </PendingButton>
                     </form>
                   )}
                 </div>
@@ -323,9 +312,9 @@ export default async function OrderPage({ params }: PageProps<"/app/[tenant]/ord
 
           {can.delete && (
             <ConfirmForm action={deleteOrder.bind(null, slug, id)} message={t.common.confirmDelete} className="no-print">
-              <Button type="submit" variant="danger" size="sm">
+              <SubmitButton variant="danger" size="sm">
                 <Trash2 className="size-4" /> {t.orders.deleteOrder}
-              </Button>
+              </SubmitButton>
             </ConfirmForm>
           )}
         </div>
