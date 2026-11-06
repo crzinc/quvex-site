@@ -255,9 +255,14 @@ function HeroMockup({ locale }: { locale: "az" | "ru" }) {
             <div className="text-xs text-fg-muted">{locale === "az" ? "Cəmi" : "Итого"}</div>
             <div className="text-xl font-semibold tabular-nums">103 ₼</div>
           </div>
-          <span className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#25D366] px-4 text-sm font-medium text-white">
+          <a
+            href="https://wa.me/994104759323"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#25D366] px-4 text-sm font-medium text-white transition-opacity hover:opacity-90"
+          >
             <MessageCircle className="size-4" /> WhatsApp
-          </span>
+          </a>
         </div>
       </div>
       <div className="absolute -bottom-2 left-6 hidden rounded-xl border border-border bg-surface px-4 py-3 text-sm shadow-lg sm:block">
